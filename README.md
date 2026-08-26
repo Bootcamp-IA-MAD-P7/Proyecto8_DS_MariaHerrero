@@ -53,6 +53,21 @@ El proyecto utiliza:
 - Desarrollo incremental.
 - Validación y testing durante todo el ciclo de desarrollo.
 
+## ⚙️ Configuración
+
+La configuración de la aplicación se gestiona mediante variables de entorno para evitar dependencias del entorno local y facilitar su ejecución en diferentes plataformas.
+
+Las variables disponibles están documentadas en `.env.example`:
+
+- `APP_ENV` — entorno de ejecución de la aplicación.
+- `DATABASE_URL` — conexión a la base de datos.
+- `MODEL_PATH` — ruta relativa al modelo de Machine Learning.
+- `MODEL_THRESHOLD` — umbral utilizado para la clasificación.
+- `MLFLOW_TRACKING_URI` — dirección del servidor de tracking de MLflow.
+- `RANDOM_SEED` — semilla global para garantizar reproducibilidad.
+
+Para configuración local puede utilizarse un archivo `.env`, que está excluido del control de versiones.
+
 ## 📁 Estado
 
 🚧 Proyecto en desarrollo.
