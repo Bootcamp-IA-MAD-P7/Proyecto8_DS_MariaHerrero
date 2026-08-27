@@ -1,0 +1,3 @@
+model,precision,recall,f1,roc_auc,pr_auc,true_negatives,false_positives,false_negatives,true_positives
+DummyClassifier,0.0,0.0,0.0,0.5,0.050188205771643665,757,0,40,0
+LogisticRegression,0.0,0.0,0.0,0.8428665785997358,0.23123388968569217,757,0,40,0
