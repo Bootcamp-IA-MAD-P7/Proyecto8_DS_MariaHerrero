@@ -11,18 +11,13 @@ OUTPUT_DIR = Path("data/processed")
 
 TARGET = "stroke"
 RANDOM_SEED = 42
-
 TEST_SIZE = 0.20
 VALIDATION_SIZE = 0.20
 
 
-def main():
-    df = pd.read_csv(DATA_PATH)
-
-    # Validamos los datos antes de realizar el split
+def split_dataset(df: pd.DataFrame):
     validate_dataset(df)
 
-    # Separamos variables predictoras y target
     X = df.drop(columns=[TARGET])
     y = df[TARGET]
 
@@ -36,7 +31,8 @@ def main():
     )
 
     # Del 80 % restante obtenemos 80 % train y 20 % validation
-    # Resultado final aproximado: 64 % train / 16 % validation / 20 % test
+    # Resultado final aproximado:
+    # 64 % train / 16 % validation / 20 % test
     X_train, X_val, y_train, y_val = train_test_split(
         X_dev,
         y_dev,
@@ -44,6 +40,14 @@ def main():
         random_state=RANDOM_SEED,
         stratify=y_dev,
     )
+
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
+
+def main():
+    df = pd.read_csv(DATA_PATH)
+
+    X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(df)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
