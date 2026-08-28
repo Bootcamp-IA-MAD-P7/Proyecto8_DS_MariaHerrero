@@ -1,0 +1,2 @@
+model_version,calibration_method,threshold,precision,recall,f1,false_negatives,false_positives
+logreg_v1,sigmoid,0.05,0.14096916299559473,0.8,0.2397003745318352,8.0,195.0
