@@ -7,6 +7,7 @@ class PredictionRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
+                "patient_id": None,
                 "gender": "Female",
                 "age": 67.0,
                 "hypertension": 0,
@@ -19,6 +20,11 @@ class PredictionRequest(BaseModel):
                 "smoking_status": "formerly smoked",
             }
         }
+    )
+
+    patient_id: int | None = Field(
+        default=None,
+        gt=0,
     )
 
     gender: Literal[
@@ -99,10 +105,15 @@ class ExplanationResponse(BaseModel):
 
 
 class PredictionResponse(BaseModel):
+    patient_id: int
+    assessment_id: int
+    prediction_id: int
+
     prediction: int
     score: float
     threshold: float
     model_version: str
+
     explanation: ExplanationResponse
 
 
