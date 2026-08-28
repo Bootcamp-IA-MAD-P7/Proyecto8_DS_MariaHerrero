@@ -86,7 +86,8 @@ def health():
         422: {
             "model": ErrorResponse,
             "description": (
-                "Datos de entrada inválidos"
+                "Datos de entrada inválidos "
+                "o paciente inexistente"
             ),
         },
         503: {
