@@ -1,0 +1,116 @@
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class PredictionRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "gender": "Female",
+                "age": 67.0,
+                "hypertension": 0,
+                "heart_disease": 1,
+                "ever_married": "Yes",
+                "work_type": "Private",
+                "Residence_type": "Urban",
+                "avg_glucose_level": 228.69,
+                "bmi": 36.6,
+                "smoking_status": "formerly smoked",
+            }
+        }
+    )
+
+    gender: Literal[
+        "Female",
+        "Male",
+        "Other",
+    ]
+
+    age: float = Field(
+        ...,
+        ge=0,
+        le=120,
+    )
+
+    hypertension: Literal[0, 1]
+
+    heart_disease: Literal[0, 1]
+
+    ever_married: Literal[
+        "Yes",
+        "No",
+    ]
+
+    work_type: Literal[
+        "Private",
+        "Self-employed",
+        "Govt_job",
+        "children",
+        "Never_worked",
+    ]
+
+    Residence_type: Literal[
+        "Urban",
+        "Rural",
+    ]
+
+    avg_glucose_level: float = Field(
+        ...,
+        gt=0,
+    )
+
+    bmi: float = Field(
+        ...,
+        gt=0,
+    )
+
+    smoking_status: Literal[
+        "formerly smoked",
+        "never smoked",
+        "smokes",
+        "Unknown",
+    ]
+
+
+class InfluenceFactor(BaseModel):
+    feature: str
+    value: str | int | float
+    reference_value: str | int | float
+    influence: float
+
+
+class ExplanationResponse(BaseModel):
+    model_version: str
+    score: float
+    threshold: float
+    prediction: int
+
+    factors_increasing_score: list[
+        InfluenceFactor
+    ]
+
+    factors_decreasing_score: list[
+        InfluenceFactor
+    ]
+
+    interpretation: str
+    disclaimer: str
+
+
+class PredictionResponse(BaseModel):
+    prediction: int
+    score: float
+    threshold: float
+    model_version: str
+    explanation: ExplanationResponse
+
+
+class HealthResponse(BaseModel):
+    status: str
+    model_loaded: bool
+    model_version: str | None = None
+
+
+class ErrorResponse(BaseModel):
+    detail: str
