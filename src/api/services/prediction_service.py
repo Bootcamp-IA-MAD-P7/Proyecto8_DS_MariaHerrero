@@ -78,6 +78,11 @@ class PredictionService:
             None,
         )
 
+        origin = patient_data.pop(
+            "origin",
+            "self_reported",
+        )
+
         dataframe = pd.DataFrame(
             [patient_data]
         )
@@ -106,9 +111,17 @@ class PredictionService:
             )
         )
 
+        persistence_data = (
+            patient_data.copy()
+        )
+
+        persistence_data["origin"] = (
+            origin
+        )
+
         persistence = self._persist_prediction(
             patient_id=patient_id,
-            patient_data=patient_data,
+            patient_data=persistence_data,
             probability=probability,
             prediction=prediction,
             threshold=threshold,

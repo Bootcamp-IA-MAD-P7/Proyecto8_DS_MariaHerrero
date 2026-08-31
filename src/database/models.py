@@ -31,11 +31,9 @@ class Patient(Base):
         nullable=False,
     )
 
-    assessments: Mapped[list["Assessment"]] = (
-        relationship(
-            back_populates="patient",
-            cascade="all, delete-orphan",
-        )
+    assessments: Mapped[list["Assessment"]] = relationship(
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
 
 
@@ -51,6 +49,12 @@ class Assessment(Base):
     patient_id: Mapped[int] = mapped_column(
         ForeignKey("patients.id"),
         nullable=False,
+    )
+
+    origin: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="self_reported",
     )
 
     gender: Mapped[str] = mapped_column(
@@ -113,11 +117,9 @@ class Assessment(Base):
         back_populates="assessments"
     )
 
-    predictions: Mapped[list["Prediction"]] = (
-        relationship(
-            back_populates="assessment",
-            cascade="all, delete-orphan",
-        )
+    predictions: Mapped[list["Prediction"]] = relationship(
+        back_populates="assessment",
+        cascade="all, delete-orphan",
     )
 
 
@@ -152,10 +154,8 @@ class ModelVersion(Base):
         nullable=False,
     )
 
-    predictions: Mapped[list["Prediction"]] = (
-        relationship(
-            back_populates="model_version"
-        )
+    predictions: Mapped[list["Prediction"]] = relationship(
+        back_populates="model_version"
     )
 
 
@@ -198,8 +198,6 @@ class Prediction(Base):
         back_populates="predictions"
     )
 
-    model_version: Mapped["ModelVersion"] = (
-        relationship(
-            back_populates="predictions"
-        )
+    model_version: Mapped["ModelVersion"] = relationship(
+        back_populates="predictions"
     )
