@@ -1,6 +1,8 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from src.api.main import app
 from src.api.schemas import PredictionRequest
@@ -17,6 +19,21 @@ from src.cli.main import (
     ask_float,
     display_result,
 )
+
+
+VALID_PAYLOAD = {
+    "origin": "professional",
+    "gender": "Female",
+    "age": 47,
+    "hypertension": 0,
+    "heart_disease": 0,
+    "ever_married": "Yes",
+    "work_type": "Private",
+    "Residence_type": "Urban",
+    "avg_glucose_level": 99,
+    "bmi": 30.1,
+    "smoking_status": "smokes",
+}
 
 
 def test_ask_float_accepts_valid_number():
@@ -145,33 +162,142 @@ def test_display_result_includes_safety_disclaimer(
         "diagnóstico médico"
         in output
     )
-    from fastapi.testclient import TestClient
 
-from src.api.main import app
-from src.api.schemas import PredictionRequest
-from src.api.services.model_service import (
-    ModelService,
-)
-from src.api.services.prediction_service import (
-    PredictionService,
-)
+
+def test_valid_patient_is_accepted():
+    request = PredictionRequest(
+        **VALID_PAYLOAD
+    )
+
+    assert request.age == 47
+    assert request.bmi == 30.1
+    assert request.gender == "Female"
+
+    assert (
+        request.origin
+        == "professional"
+    )
+
+
+def test_missing_required_field_is_rejected():
+    payload = VALID_PAYLOAD.copy()
+
+    del payload[
+        "avg_glucose_level"
+    ]
+
+    with pytest.raises(
+        ValidationError
+    ):
+        PredictionRequest(
+            **payload
+        )
+
+
+def test_invalid_age_is_rejected():
+    payload = VALID_PAYLOAD.copy()
+
+    payload["age"] = -10
+
+    with pytest.raises(
+        ValidationError
+    ):
+        PredictionRequest(
+            **payload
+        )
+
+
+def test_invalid_category_is_rejected():
+    payload = VALID_PAYLOAD.copy()
+
+    payload["gender"] = "Invalid"
+
+    with pytest.raises(
+        ValidationError
+    ):
+        PredictionRequest(
+            **payload
+        )
+
+
+def test_invalid_bmi_is_rejected():
+    payload = VALID_PAYLOAD.copy()
+
+    payload["bmi"] = -5
+
+    with pytest.raises(
+        ValidationError
+    ):
+        PredictionRequest(
+            **payload
+        )
+
+
+def test_model_unavailable_fails_controlled():
+    class UnavailableModelService:
+        is_loaded = False
+
+    service = PredictionService.__new__(
+        PredictionService
+    )
+
+    service.model_service = (
+        UnavailableModelService()
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            "El modelo no está "
+            "disponible."
+        ),
+    ):
+        service.predict(
+            VALID_PAYLOAD
+        )
+
+
+def test_cli_prediction_returns_valid_response():
+    model_service = ModelService()
+    model_service.load()
+
+    prediction_service = (
+        PredictionService(
+            model_service
+        )
+    )
+
+    request = PredictionRequest(
+        **VALID_PAYLOAD
+    )
+
+    result = (
+        prediction_service.predict(
+            request
+        )
+    )
+
+    assert (
+        result["prediction"]
+        in [0, 1]
+    )
+
+    assert (
+        0 <= result["score"] <= 1
+    )
+
+    assert (
+        result["threshold"]
+        == 0.05
+    )
+
+    assert (
+        result["model_version"]
+        == "logreg_v1"
+    )
 
 
 def test_cli_prediction_is_consistent_with_api():
-    payload = {
-        "origin": "professional",
-        "gender": "Female",
-        "age": 47,
-        "hypertension": 0,
-        "heart_disease": 0,
-        "ever_married": "Yes",
-        "work_type": "Private",
-        "Residence_type": "Urban",
-        "avg_glucose_level": 99,
-        "bmi": 30.1,
-        "smoking_status": "smokes",
-    }
-
     model_service = ModelService()
     model_service.load()
 
@@ -182,7 +308,7 @@ def test_cli_prediction_is_consistent_with_api():
     )
 
     cli_request = PredictionRequest(
-        **payload
+        **VALID_PAYLOAD
     )
 
     cli_result = (
@@ -194,12 +320,17 @@ def test_cli_prediction_is_consistent_with_api():
     with TestClient(app) as client:
         api_response = client.post(
             "/api/v1/predictions",
-            json=payload,
+            json=VALID_PAYLOAD,
         )
 
-    assert api_response.status_code == 200
+    assert (
+        api_response.status_code
+        == 200
+    )
 
-    api_result = api_response.json()
+    api_result = (
+        api_response.json()
+    )
 
     assert (
         cli_result["prediction"]
