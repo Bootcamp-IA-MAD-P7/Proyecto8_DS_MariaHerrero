@@ -39,6 +39,10 @@ class AssessmentRepository:
     ):
         assessment = Assessment(
             patient_id=patient_id,
+            origin=patient_data.get(
+                "origin",
+                "self_reported",
+            ),
             gender=patient_data["gender"],
             age=patient_data["age"],
             hypertension=(

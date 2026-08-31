@@ -8,6 +8,7 @@ class PredictionRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "patient_id": None,
+                "origin": "self_reported",
                 "gender": "Female",
                 "age": 67.0,
                 "hypertension": 0,
@@ -26,6 +27,11 @@ class PredictionRequest(BaseModel):
         default=None,
         gt=0,
     )
+
+    origin: Literal[
+        "professional",
+        "self_reported",
+    ] = "self_reported"
 
     gender: Literal[
         "Female",

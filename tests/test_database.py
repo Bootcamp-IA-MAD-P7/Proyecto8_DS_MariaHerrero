@@ -353,3 +353,310 @@ def test_new_assessment_preserves_previous_prediction(
 
     finally:
         db.close()
+
+
+def test_self_reported_origin_is_persisted(
+    tmp_path,
+):
+    db = create_test_session(
+        tmp_path
+    )
+
+    try:
+        patient_repository = (
+            PatientRepository(db)
+        )
+
+        assessment_repository = (
+            AssessmentRepository(db)
+        )
+
+        patient = (
+            patient_repository.create()
+        )
+
+        patient_data = PATIENT_DATA.copy()
+        patient_data["origin"] = (
+            "self_reported"
+        )
+
+        assessment = (
+            assessment_repository.create(
+                patient.id,
+                patient_data,
+            )
+        )
+
+        assert (
+            assessment.origin
+            == "self_reported"
+        )
+
+    finally:
+        db.close()
+
+
+def test_professional_origin_is_persisted(
+    tmp_path,
+):
+    db = create_test_session(
+        tmp_path
+    )
+
+    try:
+        patient_repository = (
+            PatientRepository(db)
+        )
+
+        assessment_repository = (
+            AssessmentRepository(db)
+        )
+
+        patient = (
+            patient_repository.create()
+        )
+
+        patient_data = PATIENT_DATA.copy()
+        patient_data["origin"] = (
+            "professional"
+        )
+
+        assessment = (
+            assessment_repository.create(
+                patient.id,
+                patient_data,
+            )
+        )
+
+        assert (
+            assessment.origin
+            == "professional"
+        )
+
+    finally:
+        db.close()
+
+
+def test_patient_assessments_can_have_different_origins(
+    tmp_path,
+):
+    db = create_test_session(
+        tmp_path
+    )
+
+    try:
+        patient_repository = (
+            PatientRepository(db)
+        )
+
+        assessment_repository = (
+            AssessmentRepository(db)
+        )
+
+        patient = (
+            patient_repository.create()
+        )
+
+        self_reported_data = (
+            PATIENT_DATA.copy()
+        )
+        self_reported_data["origin"] = (
+            "self_reported"
+        )
+
+        professional_data = (
+            PATIENT_DATA.copy()
+        )
+        professional_data["origin"] = (
+            "professional"
+        )
+
+        assessment_repository.create(
+            patient.id,
+            self_reported_data,
+        )
+
+        assessment_repository.create(
+            patient.id,
+            professional_data,
+        )
+
+        assessments = (
+            assessment_repository
+            .get_by_patient(
+                patient.id
+            )
+        )
+
+        assert len(assessments) == 2
+
+        assert (
+            assessments[0].origin
+            == "self_reported"
+        )
+
+        assert (
+            assessments[1].origin
+            == "professional"
+        )
+
+    finally:
+        db.close()
+
+
+def test_historical_prediction_is_traceable(
+    tmp_path,
+):
+    db = create_test_session(
+        tmp_path
+    )
+
+    try:
+        patient_repository = (
+            PatientRepository(db)
+        )
+
+        assessment_repository = (
+            AssessmentRepository(db)
+        )
+
+        model_repository = (
+            ModelVersionRepository(db)
+        )
+
+        prediction_repository = (
+            PredictionRepository(db)
+        )
+
+        patient = (
+            patient_repository.create()
+        )
+
+        patient_data = PATIENT_DATA.copy()
+        patient_data["origin"] = (
+            "professional"
+        )
+
+        assessment = (
+            assessment_repository.create(
+                patient.id,
+                patient_data,
+            )
+        )
+
+        model_version = (
+            model_repository.get_or_create(
+                version="logreg_v1",
+                threshold=0.05,
+                calibration_method=(
+                    "sigmoid"
+                ),
+            )
+        )
+
+        prediction = (
+            prediction_repository.create(
+                assessment_id=(
+                    assessment.id
+                ),
+                model_version_id=(
+                    model_version.id
+                ),
+                score=0.2423,
+                prediction=1,
+            )
+        )
+
+        assert prediction.created_at is not None
+
+        assert (
+            prediction.assessment.created_at
+            is not None
+        )
+
+        assert (
+            prediction.assessment.patient_id
+            == patient.id
+        )
+
+        assert (
+            prediction.assessment.origin
+            == "professional"
+        )
+
+        assert (
+            prediction.assessment.gender
+            == PATIENT_DATA["gender"]
+        )
+
+        assert (
+            prediction.assessment.age
+            == PATIENT_DATA["age"]
+        )
+
+        assert (
+            prediction.assessment.hypertension
+            == PATIENT_DATA["hypertension"]
+        )
+
+        assert (
+            prediction.assessment.heart_disease
+            == PATIENT_DATA["heart_disease"]
+        )
+
+        assert (
+            prediction.assessment.ever_married
+            == PATIENT_DATA["ever_married"]
+        )
+
+        assert (
+            prediction.assessment.work_type
+            == PATIENT_DATA["work_type"]
+        )
+
+        assert (
+            prediction.assessment.residence_type
+            == PATIENT_DATA[
+                "Residence_type"
+            ]
+        )
+
+        assert (
+            prediction.assessment.avg_glucose_level
+            == PATIENT_DATA[
+                "avg_glucose_level"
+            ]
+        )
+
+        assert (
+            prediction.assessment.bmi
+            == PATIENT_DATA["bmi"]
+        )
+
+        assert (
+            prediction.assessment.smoking_status
+            == PATIENT_DATA[
+                "smoking_status"
+            ]
+        )
+
+        assert prediction.score == 0.2423
+        assert prediction.prediction == 1
+
+        assert (
+            prediction.model_version.version
+            == "logreg_v1"
+        )
+
+        assert (
+            prediction.model_version.threshold
+            == 0.05
+        )
+
+        assert (
+            prediction.model_version.calibration_method
+            == "sigmoid"
+        )
+
+    finally:
+        db.close()
