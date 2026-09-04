@@ -1,8 +1,8 @@
 import json
 
-from matplotlib import text
 import numpy as np
 import pandas as pd
+import pytest
 from sklearn.linear_model import LogisticRegression
 
 from src.clinical_safety import (
@@ -46,6 +46,20 @@ def create_test_data():
     )
 
     return X, y
+
+
+class DeterministicInfluenceModel:
+    def predict_proba(self, dataframe):
+        probability = (
+            0.5
+            + 0.10 * dataframe["strong_increase"].to_numpy()
+            + 0.02 * dataframe["weak_increase"].to_numpy()
+            - 0.05 * dataframe["decrease"].to_numpy()
+        )
+
+        return np.column_stack(
+            (1 - probability, probability)
+        )
 
 
 def test_reference_values_use_median_and_mode():
@@ -148,6 +162,61 @@ def test_individual_explanation_contains_required_fields():
 
     assert "interpretation" in explanation
     assert "disclaimer" in explanation
+
+
+def test_individual_explanation_rejects_multiple_rows():
+    instance = pd.DataFrame(
+        {
+            "feature": [1.0, 2.0],
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="exactly one observation",
+    ):
+        explain_individual(
+            DeterministicInfluenceModel(),
+            instance,
+            {"feature": 0.0},
+        )
+
+
+def test_individual_factors_are_split_and_ordered_by_influence():
+    instance = pd.DataFrame(
+        {
+            "strong_increase": [2.0],
+            "weak_increase": [1.0],
+            "decrease": [2.0],
+        }
+    )
+    reference = {
+        "strong_increase": 0.0,
+        "weak_increase": 0.0,
+        "decrease": 0.0,
+    }
+
+    explanation = explain_individual(
+        DeterministicInfluenceModel(),
+        instance,
+        reference,
+    )
+
+    increasing = explanation["factors_increasing_score"]
+    decreasing = explanation["factors_decreasing_score"]
+
+    assert [factor["feature"] for factor in increasing] == [
+        "strong_increase",
+        "weak_increase",
+    ]
+    assert [factor["feature"] for factor in decreasing] == [
+        "decrease"
+    ]
+    assert all(factor["influence"] > 0 for factor in increasing)
+    assert all(factor["influence"] < 0 for factor in decreasing)
+    assert abs(increasing[0]["influence"]) > abs(
+        increasing[1]["influence"]
+    )
 
 
 def test_explanation_uses_centralized_safety_language():

@@ -3,20 +3,22 @@ from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from src.api.main import app
 from src.clinical_safety import (
     CLINICAL_DISCLAIMER,
     EXPLAINABILITY_DISCLAIMER,
 )
-from src.database.config import Base, get_db
 from src.database.repositories import (
     AssessmentRepository,
     ModelVersionRepository,
     PatientRepository,
     PredictionRepository,
+)
+
+
+pytestmark = pytest.mark.usefixtures(
+    "isolated_api_database"
 )
 
 
@@ -32,51 +34,6 @@ VALID_PAYLOAD = {
     "bmi": 36.6,
     "smoking_status": "formerly smoked",
 }
-
-
-@pytest.fixture(autouse=True)
-def isolated_api_database(tmp_path):
-    database_path = tmp_path / "history_api.db"
-    engine = create_engine(
-        f"sqlite:///{database_path}",
-        connect_args={
-            "check_same_thread": False,
-        },
-    )
-    Base.metadata.create_all(engine)
-    session_factory = sessionmaker(
-        bind=engine,
-        autoflush=False,
-        expire_on_commit=False,
-    )
-
-    def override_get_db():
-        db = session_factory()
-
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = (
-        override_get_db
-    )
-    original_session_factory = (
-        app.state.session_factory
-    )
-    app.state.session_factory = session_factory
-
-    try:
-        yield session_factory
-    finally:
-        app.state.session_factory = (
-            original_session_factory
-        )
-        app.dependency_overrides.pop(
-            get_db,
-            None,
-        )
-        engine.dispose()
 
 
 @pytest.fixture
