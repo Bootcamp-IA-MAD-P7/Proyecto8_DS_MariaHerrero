@@ -5,6 +5,7 @@ import {
 } from "react-router-dom"
 
 import Layout from "./components/Layout"
+import AssessmentDetail from "./pages/AssessmentDetail"
 import History from "./pages/History"
 import NewAssessment from "./pages/NewAssessment"
 import Result from "./pages/Result"
@@ -36,6 +37,11 @@ function App() {
         <Route
           path="/history"
           element={<History />}
+        />
+
+        <Route
+          path="/history/:assessmentId"
+          element={<AssessmentDetail />}
         />
       </Route>
     </Routes>

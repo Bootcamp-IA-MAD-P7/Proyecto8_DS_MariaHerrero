@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -657,6 +659,144 @@ def test_historical_prediction_is_traceable(
             prediction.model_version.calibration_method
             == "sigmoid"
         )
+
+    finally:
+        db.close()
+
+
+def test_assessments_are_listed_newest_first(
+    tmp_path,
+):
+    db = create_test_session(tmp_path)
+
+    try:
+        patient = PatientRepository(db).create()
+        repository = AssessmentRepository(db)
+
+        older = repository.create(
+            patient.id,
+            PATIENT_DATA,
+        )
+        newer = repository.create(
+            patient.id,
+            PATIENT_DATA,
+        )
+
+        older.created_at = datetime(2026, 1, 1)
+        newer.created_at = datetime(2026, 1, 2)
+        db.commit()
+
+        assessments = repository.list_all()
+
+        assert [
+            assessment.id
+            for assessment in assessments
+        ] == [newer.id, older.id]
+
+    finally:
+        db.close()
+
+
+def test_assessment_detail_loads_prediction_and_model(
+    tmp_path,
+):
+    db = create_test_session(tmp_path)
+
+    try:
+        patient = PatientRepository(db).create()
+        assessment_repository = AssessmentRepository(db)
+        model_repository = ModelVersionRepository(db)
+        prediction_repository = PredictionRepository(db)
+
+        assessment = assessment_repository.create(
+            patient.id,
+            PATIENT_DATA,
+        )
+        model_version = model_repository.get_or_create(
+            version="logreg_v1",
+            threshold=0.05,
+            calibration_method="sigmoid",
+        )
+        prediction_repository.create(
+            assessment_id=assessment.id,
+            model_version_id=model_version.id,
+            score=0.2423,
+            prediction=1,
+        )
+
+        stored = (
+            assessment_repository
+            .get_with_predictions(
+                assessment.id
+            )
+        )
+        latest = (
+            assessment_repository
+            .get_latest_prediction(stored)
+        )
+
+        assert stored.id == assessment.id
+        assert latest.score == 0.2423
+        assert latest.model_version.version == "logreg_v1"
+        assert latest.model_version.threshold == 0.05
+
+    finally:
+        db.close()
+
+
+def test_latest_prediction_is_selected(
+    tmp_path,
+):
+    db = create_test_session(tmp_path)
+
+    try:
+        patient = PatientRepository(db).create()
+        assessment_repository = AssessmentRepository(db)
+        model_repository = ModelVersionRepository(db)
+        prediction_repository = PredictionRepository(db)
+
+        assessment = assessment_repository.create(
+            patient.id,
+            PATIENT_DATA,
+        )
+        model_version = model_repository.get_or_create(
+            version="logreg_v1",
+            threshold=0.05,
+            calibration_method="sigmoid",
+        )
+        older = prediction_repository.create(
+            assessment_id=assessment.id,
+            model_version_id=model_version.id,
+            score=0.10,
+            prediction=1,
+        )
+        newer = prediction_repository.create(
+            assessment_id=assessment.id,
+            model_version_id=model_version.id,
+            score=0.30,
+            prediction=1,
+        )
+
+        older.created_at = datetime(2026, 1, 1)
+        newer.created_at = (
+            older.created_at
+            + timedelta(days=1)
+        )
+        db.commit()
+
+        stored = (
+            assessment_repository
+            .get_with_predictions(
+                assessment.id
+            )
+        )
+        latest = (
+            assessment_repository
+            .get_latest_prediction(stored)
+        )
+
+        assert latest.id == newer.id
+        assert latest.score == 0.30
 
     finally:
         db.close()

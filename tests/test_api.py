@@ -1,6 +1,18 @@
+from datetime import datetime
+
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from src.api.main import app
+from src.database.config import Base, get_db
+from src.database.repositories import (
+    AssessmentRepository,
+    ModelVersionRepository,
+    PatientRepository,
+    PredictionRepository,
+)
 
 
 VALID_PAYLOAD = {
@@ -15,6 +27,98 @@ VALID_PAYLOAD = {
     "bmi": 36.6,
     "smoking_status": "formerly smoked",
 }
+
+
+@pytest.fixture(autouse=True)
+def isolated_api_database(tmp_path):
+    database_path = tmp_path / "history_api.db"
+    engine = create_engine(
+        f"sqlite:///{database_path}",
+        connect_args={
+            "check_same_thread": False,
+        },
+    )
+    Base.metadata.create_all(engine)
+    session_factory = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+
+    def override_get_db():
+        db = session_factory()
+
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = (
+        override_get_db
+    )
+    original_session_factory = (
+        app.state.session_factory
+    )
+    app.state.session_factory = session_factory
+
+    try:
+        yield session_factory
+    finally:
+        app.state.session_factory = (
+            original_session_factory
+        )
+        app.dependency_overrides.pop(
+            get_db,
+            None,
+        )
+        engine.dispose()
+
+
+@pytest.fixture
+def history_api(isolated_api_database):
+    with TestClient(app) as client:
+        yield client, isolated_api_database
+
+
+def create_historical_assessment(
+    session_factory,
+    *,
+    created_at,
+    score,
+    age=67,
+):
+    db = session_factory()
+
+    try:
+        patient = PatientRepository(db).create()
+        assessment_data = VALID_PAYLOAD.copy()
+        assessment_data["age"] = age
+        assessment = AssessmentRepository(db).create(
+            patient.id,
+            assessment_data,
+        )
+        assessment.created_at = created_at
+
+        model_version = (
+            ModelVersionRepository(db)
+            .get_or_create(
+                version="logreg_v1",
+                threshold=0.05,
+                calibration_method="sigmoid",
+            )
+        )
+        prediction = PredictionRepository(db).create(
+            assessment_id=assessment.id,
+            model_version_id=model_version.id,
+            score=score,
+            prediction=int(score >= 0.05),
+        )
+        prediction.created_at = created_at
+        db.commit()
+
+        return assessment.id
+    finally:
+        db.close()
 
 
 def test_health_endpoint():
@@ -112,3 +216,143 @@ def test_openapi_contains_required_endpoints():
 
     assert "/api/v1/health" in paths
     assert "/api/v1/predictions" in paths
+    assert "/api/v1/assessments" in paths
+    assert (
+        "/api/v1/assessments/{assessment_id}"
+        in paths
+    )
+
+
+def test_assessment_history_is_empty(
+    history_api,
+):
+    client, _ = history_api
+
+    response = client.get(
+        "/api/v1/assessments"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_assessment_history_is_ordered_and_contains_prediction(
+    history_api,
+):
+    client, session_factory = history_api
+    older_id = create_historical_assessment(
+        session_factory,
+        created_at=datetime(2026, 1, 1),
+        score=0.10,
+    )
+    newer_id = create_historical_assessment(
+        session_factory,
+        created_at=datetime(2026, 1, 2),
+        score=0.20,
+    )
+
+    response = client.get(
+        "/api/v1/assessments"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert [
+        item["assessment_id"]
+        for item in data
+    ] == [newer_id, older_id]
+    assert data[0]["score"] == 0.20
+    assert data[0]["model_version"] == "logreg_v1"
+    assert data[0]["threshold"] == 0.05
+    assert data[0]["prediction_created_at"] is not None
+
+
+def test_assessment_history_detail_contains_original_data(
+    history_api,
+):
+    client, session_factory = history_api
+    assessment_id = create_historical_assessment(
+        session_factory,
+        created_at=datetime(2026, 1, 2),
+        score=0.20,
+        age=72,
+    )
+
+    response = client.get(
+        f"/api/v1/assessments/{assessment_id}"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["assessment_id"] == assessment_id
+    assert data["gender"] == VALID_PAYLOAD["gender"]
+    assert data["age"] == 72
+    assert data["hypertension"] == VALID_PAYLOAD["hypertension"]
+    assert data["heart_disease"] == VALID_PAYLOAD["heart_disease"]
+    assert data["ever_married"] == VALID_PAYLOAD["ever_married"]
+    assert data["work_type"] == VALID_PAYLOAD["work_type"]
+    assert data["Residence_type"] == VALID_PAYLOAD["Residence_type"]
+    assert data["avg_glucose_level"] == VALID_PAYLOAD["avg_glucose_level"]
+    assert data["bmi"] == VALID_PAYLOAD["bmi"]
+    assert data["smoking_status"] == VALID_PAYLOAD["smoking_status"]
+    assert data["score"] == 0.20
+    assert data["model_version"] == "logreg_v1"
+
+
+def test_assessment_history_detail_returns_404(
+    history_api,
+):
+    client, _ = history_api
+
+    response = client.get(
+        "/api/v1/assessments/999"
+    )
+
+    assert response.status_code == 404
+
+
+def test_assessment_history_uses_latest_prediction(
+    history_api,
+):
+    client, session_factory = history_api
+    db = session_factory()
+
+    try:
+        patient = PatientRepository(db).create()
+        assessment = AssessmentRepository(db).create(
+            patient.id,
+            VALID_PAYLOAD,
+        )
+        model_version = (
+            ModelVersionRepository(db)
+            .get_or_create(
+                version="logreg_v1",
+                threshold=0.05,
+                calibration_method="sigmoid",
+            )
+        )
+        older = PredictionRepository(db).create(
+            assessment_id=assessment.id,
+            model_version_id=model_version.id,
+            score=0.10,
+            prediction=1,
+        )
+        newer = PredictionRepository(db).create(
+            assessment_id=assessment.id,
+            model_version_id=model_version.id,
+            score=0.30,
+            prediction=1,
+        )
+        older.created_at = datetime(2026, 1, 1)
+        newer.created_at = datetime(2026, 1, 2)
+        db.commit()
+        assessment_id = assessment.id
+    finally:
+        db.close()
+
+    response = client.get(
+        f"/api/v1/assessments/{assessment_id}"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["score"] == 0.30

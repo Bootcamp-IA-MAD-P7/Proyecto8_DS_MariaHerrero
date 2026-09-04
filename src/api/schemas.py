@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -121,6 +122,33 @@ class PredictionResponse(BaseModel):
     model_version: str
 
     explanation: ExplanationResponse
+
+
+class AssessmentHistoryItem(BaseModel):
+    assessment_id: int
+    patient_id: int
+    assessment_created_at: datetime
+    prediction_created_at: datetime | None
+    origin: str
+    prediction: int | None
+    score: float | None
+    threshold: float | None
+    model_version: str | None
+
+
+class AssessmentHistoryDetail(
+    AssessmentHistoryItem
+):
+    gender: str
+    age: float
+    hypertension: int
+    heart_disease: int
+    ever_married: str
+    work_type: str
+    Residence_type: str
+    avg_glucose_level: float
+    bmi: float
+    smoking_status: str
 
 
 class HealthResponse(BaseModel):

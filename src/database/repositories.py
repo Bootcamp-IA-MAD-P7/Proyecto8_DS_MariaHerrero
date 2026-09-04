@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.database.models import (
     Assessment,
@@ -96,6 +97,66 @@ class AssessmentRepository:
             self.db.scalars(
                 statement
             ).all()
+        )
+
+    def list_all(self):
+        statement = (
+            select(Assessment)
+            .options(
+                selectinload(
+                    Assessment.predictions
+                ).selectinload(
+                    Prediction.model_version
+                )
+            )
+            .order_by(
+                Assessment.created_at.desc(),
+                Assessment.id.desc(),
+            )
+        )
+
+        return list(
+            self.db.scalars(
+                statement
+            ).all()
+        )
+
+    def get_with_predictions(
+        self,
+        assessment_id,
+    ):
+        statement = (
+            select(Assessment)
+            .options(
+                selectinload(
+                    Assessment.predictions
+                ).selectinload(
+                    Prediction.model_version
+                )
+            )
+            .where(
+                Assessment.id
+                == assessment_id
+            )
+        )
+
+        return self.db.scalar(
+            statement
+        )
+
+    @staticmethod
+    def get_latest_prediction(
+        assessment,
+    ):
+        if not assessment.predictions:
+            return None
+
+        return max(
+            assessment.predictions,
+            key=lambda prediction: (
+                prediction.created_at,
+                prediction.id,
+            ),
         )
 
 
