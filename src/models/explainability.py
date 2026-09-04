@@ -5,6 +5,10 @@ import numpy as np
 import pandas as pd
 from sklearn.inspection import permutation_importance
 
+from src.clinical_safety import (
+    EXPLAINABILITY_DISCLAIMER,
+    EXPLAINABILITY_INTERPRETATION,
+)
 from src.models.final_model import (
     MODEL_VERSION,
     SELECTED_THRESHOLD,
@@ -242,16 +246,10 @@ def explain_individual(
             decreasing
         ),
         "interpretation": (
-            "Las influencias describen cómo "
-            "cada variable modifica el score "
-            "generado por el modelo respecto "
-            "a un valor de referencia."
+            EXPLAINABILITY_INTERPRETATION
         ),
         "disclaimer": (
-            "La explicación describe el "
-            "comportamiento del modelo y no "
-            "implica causalidad médica ni "
-            "constituye un diagnóstico."
+            EXPLAINABILITY_DISCLAIMER
         ),
     }
 

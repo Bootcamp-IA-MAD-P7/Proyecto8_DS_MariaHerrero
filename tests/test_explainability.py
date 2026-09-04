@@ -5,6 +5,10 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
+from src.clinical_safety import (
+    EXPLAINABILITY_DISCLAIMER,
+    EXPLAINABILITY_INTERPRETATION,
+)
 from src.models.explainability import (
     MODEL_VERSION,
     build_reference_values,
@@ -146,7 +150,7 @@ def test_individual_explanation_contains_required_fields():
     assert "disclaimer" in explanation
 
 
-def test_explanation_uses_non_causal_language():
+def test_explanation_uses_centralized_safety_language():
     X, y = create_test_data()
 
     model = LogisticRegression(
@@ -168,14 +172,20 @@ def test_explanation_uses_non_causal_language():
         reference,
     )
 
-    text = (
-        explanation["interpretation"]
-        + " "
-        + explanation["disclaimer"]
-    ).lower()
-
-    assert "causalidad" in text
-    assert "diagnóstico" in text
+    assert explanation["interpretation"] == (
+        EXPLAINABILITY_INTERPRETATION
+    )
+    assert explanation["disclaimer"] == (
+        EXPLAINABILITY_DISCLAIMER
+    )
+    assert (
+        "No implica causalidad médica"
+        in explanation["disclaimer"]
+    )
+    assert (
+        "no constituye un diagnóstico médico"
+        in explanation["disclaimer"]
+    )
 
 
 def test_api_explanation_is_json_serializable():

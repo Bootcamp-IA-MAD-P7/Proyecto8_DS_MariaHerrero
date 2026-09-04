@@ -12,8 +12,13 @@ from src.api.services.model_service import (
 from src.api.services.prediction_service import (
     PredictionService,
 )
+from src.clinical_safety import (
+    ABOVE_THRESHOLD_LABEL,
+    BELOW_THRESHOLD_LABEL,
+    CLINICAL_DISCLAIMER,
+    SCORE_LABEL,
+)
 from src.cli.main import (
-    DISCLAIMER,
     ask_binary,
     ask_choice,
     ask_float,
@@ -144,24 +149,42 @@ def test_display_result_includes_safety_disclaimer(
 
     output = capsys.readouterr().out
 
-    assert "Score de riesgo:" in output
+    assert f"{SCORE_LABEL}:" in output
     assert "Threshold:" in output
-    assert "Clasificación:" in output
-    assert "Modelo: logreg_v1" in output
-
     assert (
-        "El score no supera el "
-        "umbral configurado."
+        f"Clasificación: {BELOW_THRESHOLD_LABEL}"
         in output
     )
+    assert "Modelo: logreg_v1" in output
 
-    assert DISCLAIMER in output
+    assert CLINICAL_DISCLAIMER in output
 
     assert (
         "no constituye un "
         "diagnóstico médico"
+        in output.lower()
+    )
+
+
+def test_display_result_uses_safe_positive_label(
+    capsys,
+):
+    result = {
+        "prediction": 1,
+        "score": 0.1288,
+        "threshold": 0.05,
+        "model_version": "logreg_v1",
+    }
+
+    display_result(result)
+
+    output = capsys.readouterr().out
+
+    assert (
+        f"Clasificación: {ABOVE_THRESHOLD_LABEL}"
         in output
     )
+    assert CLINICAL_DISCLAIMER in output
 
 
 def test_valid_patient_is_accepted():

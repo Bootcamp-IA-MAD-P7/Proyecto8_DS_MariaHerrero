@@ -11,6 +11,10 @@ import {
 import {
   getAssessmentDetail,
 } from "../services/api"
+import {
+  HISTORICAL_RESULT_DISCLAIMER,
+  safeClassificationLabel,
+} from "../constants/clinicalSafety"
 
 
 const VALUE_LABELS = {
@@ -167,11 +171,9 @@ function AssessmentDetail() {
   }
 
   const classification =
-    assessment.prediction === null
-      ? "Sin predicción disponible"
-      : assessment.prediction === 1
-        ? "Por encima del umbral"
-        : "Por debajo del umbral"
+    safeClassificationLabel(
+      assessment.prediction
+    )
 
   const clinicalData = [
     ["Sexo", assessment.gender],
@@ -282,9 +284,7 @@ function AssessmentDetail() {
         </section>
 
         <div className="safety-message">
-          Este resultado histórico sirve como
-          apoyo a la criba preventiva y no
-          constituye un diagnóstico médico.
+          {HISTORICAL_RESULT_DISCLAIMER}
         </div>
 
         <div className="result-actions">

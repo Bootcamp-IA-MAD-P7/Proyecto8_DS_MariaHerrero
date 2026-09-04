@@ -10,6 +10,9 @@ import {
 import {
   getAssessmentHistory,
 } from "../services/api"
+import {
+  safeClassificationLabel,
+} from "../constants/clinicalSafety"
 
 
 function formatDate(value) {
@@ -35,19 +38,6 @@ function formatScore(value) {
   }
 
   return Number(value).toFixed(4)
-}
-
-
-function classificationLabel(
-  prediction,
-) {
-  if (prediction === null) {
-    return "Sin predicción"
-  }
-
-  return prediction === 1
-    ? "Por encima del umbral"
-    : "Por debajo del umbral"
 }
 
 
@@ -203,7 +193,7 @@ function History() {
 
                         <h2>
                           {
-                            classificationLabel(
+                            safeClassificationLabel(
                               assessment.prediction
                             )
                           }

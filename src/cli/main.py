@@ -1,5 +1,10 @@
 from pydantic import ValidationError
 
+from src.clinical_safety import (
+    CLINICAL_DISCLAIMER,
+    SCORE_LABEL,
+    safe_classification_label,
+)
 from src.api.schemas import (
     PredictionRequest,
 )
@@ -8,13 +13,6 @@ from src.api.services.model_service import (
 )
 from src.api.services.prediction_service import (
     PredictionService,
-)
-
-
-DISCLAIMER = (
-    "Este resultado es una estimación generada "
-    "por un modelo de Machine Learning y no "
-    "constituye un diagnóstico médico."
 )
 
 
@@ -205,7 +203,7 @@ def display_result(
     )
 
     print(
-        f"Score de riesgo: "
+        f"{SCORE_LABEL}: "
         f"{result['score']:.4f}"
     )
 
@@ -216,7 +214,7 @@ def display_result(
 
     print(
         f"Clasificación: "
-        f"{result['prediction']}"
+        f"{safe_classification_label(result['prediction'])}"
     )
 
     print(
@@ -224,24 +222,12 @@ def display_result(
         f"{result['model_version']}"
     )
 
-    if result["prediction"] == 1:
-        print(
-            "\nEl score supera el "
-            "umbral configurado."
-        )
-
-    else:
-        print(
-            "\nEl score no supera el "
-            "umbral configurado."
-        )
-
     print(
         "\nAVISO:"
     )
 
     print(
-        DISCLAIMER
+        CLINICAL_DISCLAIMER
     )
 
 
