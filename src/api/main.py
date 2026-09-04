@@ -1,13 +1,20 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
 from src.api.schemas import (
+    AssessmentHistoryDetail,
+    AssessmentHistoryItem,
     ErrorResponse,
     HealthResponse,
     PredictionRequest,
     PredictionResponse,
+)
+from src.database.config import SessionLocal, get_db
+from src.database.repositories import (
+    AssessmentRepository,
 )
 
 from src.api.services.model_service import (
@@ -32,7 +39,10 @@ async def lifespan(app: FastAPI):
 
         prediction_service = (
             PredictionService(
-                model_service
+                model_service,
+                session_factory=(
+                    app.state.session_factory
+                ),
             )
         )
 
@@ -58,6 +68,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.session_factory = SessionLocal
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -69,6 +81,54 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def assessment_history_data(
+    assessment,
+    repository,
+):
+    latest_prediction = (
+        repository.get_latest_prediction(
+            assessment
+        )
+    )
+
+    if latest_prediction is None:
+        prediction_data = {
+            "prediction_created_at": None,
+            "prediction": None,
+            "score": None,
+            "threshold": None,
+            "model_version": None,
+        }
+    else:
+        prediction_data = {
+            "prediction_created_at": (
+                latest_prediction.created_at
+            ),
+            "prediction": (
+                latest_prediction.prediction
+            ),
+            "score": latest_prediction.score,
+            "threshold": (
+                latest_prediction
+                .model_version.threshold
+            ),
+            "model_version": (
+                latest_prediction
+                .model_version.version
+            ),
+        }
+
+    return {
+        "assessment_id": assessment.id,
+        "patient_id": assessment.patient_id,
+        "assessment_created_at": (
+            assessment.created_at
+        ),
+        "origin": assessment.origin,
+        **prediction_data,
+    }
 
 
 @app.get(
@@ -89,6 +149,80 @@ def health():
         "model_version": (
             model_service.model_version
         ),
+    }
+
+
+@app.get(
+    "/api/v1/assessments",
+    response_model=list[AssessmentHistoryItem],
+    tags=["Assessments"],
+)
+def list_assessments(
+    db: Session = Depends(get_db),
+):
+    repository = AssessmentRepository(db)
+
+    return [
+        assessment_history_data(
+            assessment,
+            repository,
+        )
+        for assessment in repository.list_all()
+    ]
+
+
+@app.get(
+    "/api/v1/assessments/{assessment_id}",
+    response_model=AssessmentHistoryDetail,
+    responses={
+        404: {
+            "model": ErrorResponse,
+            "description": (
+                "Evaluación no encontrada"
+            ),
+        },
+    },
+    tags=["Assessments"],
+)
+def get_assessment(
+    assessment_id: int,
+    db: Session = Depends(get_db),
+):
+    repository = AssessmentRepository(db)
+    assessment = (
+        repository.get_with_predictions(
+            assessment_id
+        )
+    )
+
+    if assessment is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "No existe una evaluación "
+                f"con id {assessment_id}."
+            ),
+        )
+
+    return {
+        **assessment_history_data(
+            assessment,
+            repository,
+        ),
+        "gender": assessment.gender,
+        "age": assessment.age,
+        "hypertension": assessment.hypertension,
+        "heart_disease": assessment.heart_disease,
+        "ever_married": assessment.ever_married,
+        "work_type": assessment.work_type,
+        "Residence_type": (
+            assessment.residence_type
+        ),
+        "avg_glucose_level": (
+            assessment.avg_glucose_level
+        ),
+        "bmi": assessment.bmi,
+        "smoking_status": assessment.smoking_status,
     }
 
 

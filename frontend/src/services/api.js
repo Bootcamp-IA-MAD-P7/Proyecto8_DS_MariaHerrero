@@ -97,3 +97,56 @@ export async function createPrediction(
 
   return response.json()
 }
+
+
+async function getApiResource(
+  path,
+  fallbackMessage,
+) {
+  let response
+
+  try {
+    response = await fetch(
+      `${API_BASE_URL}${path}`,
+    )
+  } catch {
+    throw new Error(
+      "No se pudo conectar con el servidor. Comprueba que la API está iniciada.",
+    )
+  }
+
+  if (!response.ok) {
+    const detail =
+      await parseError(
+        response
+      )
+
+    const error = new Error(
+      detail || fallbackMessage,
+    )
+
+    error.status = response.status
+
+    throw error
+  }
+
+  return response.json()
+}
+
+
+export function getAssessmentHistory() {
+  return getApiResource(
+    "/assessments",
+    "No se pudo consultar el historial de evaluaciones.",
+  )
+}
+
+
+export function getAssessmentDetail(
+  assessmentId,
+) {
+  return getApiResource(
+    `/assessments/${assessmentId}`,
+    "No se pudo consultar el detalle de la evaluación.",
+  )
+}
