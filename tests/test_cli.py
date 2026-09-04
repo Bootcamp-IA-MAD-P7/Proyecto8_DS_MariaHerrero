@@ -280,13 +280,18 @@ def test_model_unavailable_fails_controlled():
         )
 
 
-def test_cli_prediction_returns_valid_response():
+def test_cli_prediction_returns_valid_response(
+    isolated_api_database,
+):
     model_service = ModelService()
     model_service.load()
 
     prediction_service = (
         PredictionService(
-            model_service
+            model_service,
+            session_factory=(
+                isolated_api_database
+            ),
         )
     )
 
@@ -320,13 +325,18 @@ def test_cli_prediction_returns_valid_response():
     )
 
 
-def test_cli_prediction_is_consistent_with_api():
+def test_cli_prediction_is_consistent_with_api(
+    isolated_api_database,
+):
     model_service = ModelService()
     model_service.load()
 
     prediction_service = (
         PredictionService(
-            model_service
+            model_service,
+            session_factory=(
+                isolated_api_database
+            ),
         )
     )
 

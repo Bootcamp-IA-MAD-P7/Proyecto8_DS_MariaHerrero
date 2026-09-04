@@ -75,12 +75,41 @@ def test_invalid_numeric_range_raises_error():
         validate_dataset(df)
 
 
+def test_age_above_supported_range_raises_error():
+    df = valid_dataframe()
+    df.loc[0, "age"] = 121
+
+    with pytest.raises(ValueError, match="valores mayores que 120"):
+        validate_dataset(df)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["bmi", "avg_glucose_level"],
+)
+def test_negative_continuous_value_raises_error(field):
+    df = valid_dataframe()
+    df.loc[0, field] = -0.1
+
+    with pytest.raises(ValueError, match="valores menores que 0"):
+        validate_dataset(df)
+
+
+def test_zero_bmi_and_glucose_match_current_dataset_contract():
+    df = valid_dataframe()
+    df.loc[0, "bmi"] = 0
+    df.loc[0, "avg_glucose_level"] = 0
+
+    validate_dataset(df)
+
+
 def test_target_requires_both_classes():
     df = valid_dataframe()
     df["stroke"] = 0
 
     with pytest.raises(ValueError, match="debe contener las clases 0 y 1"):
         validate_dataset(df)
+
 
 def test_invalid_type_raises_error():
     df = valid_dataframe()

@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from src.preprocessing.pipeline import create_preprocessor
@@ -50,13 +51,21 @@ def test_preprocessor_reuses_fitted_transformations():
             "smoking_status": ["smokes"],
         }
     )
+    test = validation.copy()
+    test.loc[:, "age"] = 35.0
+    test.loc[:, "gender"] = "Female"
 
     preprocessor = create_preprocessor()
 
     train_transformed = preprocessor.fit_transform(train)
     validation_transformed = preprocessor.transform(validation)
+    test_transformed = preprocessor.transform(test)
 
-    assert train_transformed.shape[1] == validation_transformed.shape[1]
+    assert (
+        train_transformed.shape[1]
+        == validation_transformed.shape[1]
+        == test_transformed.shape[1]
+    )
 
 
 def test_preprocessor_handles_missing_values():
@@ -69,6 +78,31 @@ def test_preprocessor_handles_missing_values():
     transformed = preprocessor.fit_transform(df)
 
     assert not pd.isna(transformed).any()
+    assert np.isfinite(transformed).all()
+
+
+def test_numeric_statistics_are_learned_from_train():
+    train = sample_dataframe()
+    validation = sample_dataframe().iloc[[0]].copy()
+    validation.loc[:, "age"] = 1000.0
+    validation.loc[:, "avg_glucose_level"] = 2000.0
+    validation.loc[:, "bmi"] = 3000.0
+    expected_train_means = train[
+        ["age", "avg_glucose_level", "bmi"]
+    ].mean().to_numpy()
+    preprocessor = create_preprocessor()
+
+    preprocessor.fit(train)
+    preprocessor.transform(validation)
+
+    scaler = (
+        preprocessor.named_transformers_["numeric"]
+        .named_steps["scaler"]
+    )
+    np.testing.assert_allclose(
+        scaler.mean_,
+        expected_train_means,
+    )
 
 
 def test_preprocessor_handles_unknown_categories():
@@ -79,7 +113,9 @@ def test_preprocessor_handles_unknown_categories():
 
     preprocessor = create_preprocessor()
 
-    preprocessor.fit(train)
+    train_transformed = preprocessor.fit_transform(train)
     transformed = preprocessor.transform(new_data)
 
     assert transformed.shape[0] == 1
+    assert transformed.shape[1] == train_transformed.shape[1]
+    assert np.isfinite(transformed).all()

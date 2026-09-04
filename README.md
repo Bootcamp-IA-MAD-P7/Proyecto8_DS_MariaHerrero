@@ -68,6 +68,18 @@ Las variables disponibles están documentadas en `.env.example`:
 
 Para configuración local puede utilizarse un archivo `.env`, que está excluido del control de versiones.
 
+## ✅ Testing
+
+La suite completa se ejecuta desde la raíz del proyecto con un único comando:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+La ejecución debe finalizar sin fallos. Los tests utilizan recursos temporales y aislados cuando corresponde, por lo que no deben escribir en la base de datos local de la aplicación.
+
+La suite cubre las principales áreas críticas: validación de datos, preprocesamiento, Machine Learning, servicios de modelo y predicción, API, base de datos, CLI, seguridad clínica, explicabilidad e integración entre capas.
+
 ## 📁 Estado
 
 🚧 Proyecto en desarrollo.
