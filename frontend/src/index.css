@@ -380,3 +380,150 @@ textarea {
     width: 100%;
   }
 }
+
+.risk-summary {
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #d7e3e3;
+  border-radius: 16px;
+  background: #f7fbfb;
+}
+
+.risk-summary h2 {
+  margin: 0.35rem 0 0.75rem;
+}
+
+.risk-summary p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.risk-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.result-metrics {
+  display: grid;
+  grid-template-columns:
+    repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid #d7e3e3;
+  border-radius: 12px;
+}
+
+.metric-card span {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.metric-card strong {
+  font-size: 1.25rem;
+}
+
+.explanation-section {
+  margin-top: 2rem;
+}
+
+.section-heading {
+  margin-bottom: 1.5rem;
+}
+
+.section-heading h2 {
+  margin:
+    0.35rem 0
+    0.5rem;
+}
+
+.factor-columns {
+  display: grid;
+  grid-template-columns:
+    repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.factor-group {
+  padding: 1.25rem;
+  border: 1px solid #d7e3e3;
+  border-radius: 14px;
+}
+
+.factor-group h3 {
+  margin-top: 0;
+}
+
+.factor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.factor-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom:
+    1px solid #e7eeee;
+}
+
+.factor-item:last-child {
+  border-bottom: 0;
+}
+
+.factor-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.factor-item span {
+  font-size: 0.9rem;
+}
+
+.influence-value {
+  font-weight: 700;
+}
+
+.muted-text {
+  opacity: 0.7;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.result-link {
+  display: inline-block;
+  text-decoration: none;
+}
+
+@media (
+  max-width: 760px
+) {
+  .result-metrics,
+  .factor-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .result-actions {
+    justify-content: stretch;
+  }
+
+  .result-link {
+    width: 100%;
+    text-align: center;
+  }
+}

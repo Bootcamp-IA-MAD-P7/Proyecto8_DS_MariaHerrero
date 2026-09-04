@@ -3,6 +3,10 @@ import {
 } from "react"
 
 import {
+  useNavigate,
+} from "react-router-dom"
+
+import {
   createPrediction,
 } from "../services/api"
 
@@ -106,6 +110,9 @@ function validateForm(
 
 
 function NewAssessment() {
+  const navigate =
+    useNavigate()
+
   const [
     form,
     setForm,
@@ -127,11 +134,6 @@ function NewAssessment() {
     apiError,
     setApiError,
   ] = useState("")
-
-  const [
-    result,
-    setResult,
-  ] = useState(null)
 
 
   function handleChange(
@@ -209,19 +211,23 @@ function NewAssessment() {
       )
 
       setApiError("")
-      setResult(null)
 
       const response =
         await createPrediction(
           payload
         )
 
-      setResult(
-        response
-      )
-
       setStatus(
         "success"
+      )
+
+      navigate(
+        "/result",
+        {
+          state: {
+            result: response,
+          },
+        },
       )
     } catch (error) {
       setApiError(
@@ -699,33 +705,6 @@ function NewAssessment() {
             )
           }
 
-          {
-            status ===
-              "success" &&
-            result &&
-            (
-              <div className="form-message success-message">
-                <strong>
-                  Evaluación enviada correctamente.
-                </strong>
-
-                <span>
-                  Score: {
-                    Number(
-                      result.score
-                    ).toFixed(4)
-                  }
-                </span>
-
-                <span>
-                  Clasificación: {
-                    result.prediction
-                  }
-                </span>
-              </div>
-            )
-          }
-
           <div className="form-actions">
             <button
               className="primary-button"
@@ -754,5 +733,6 @@ function NewAssessment() {
     </section>
   )
 }
+
 
 export default NewAssessment
