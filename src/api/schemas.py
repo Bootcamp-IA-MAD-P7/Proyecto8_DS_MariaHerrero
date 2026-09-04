@@ -44,6 +44,7 @@ class PredictionRequest(BaseModel):
         ...,
         ge=0,
         le=120,
+        allow_inf_nan=False,
     )
 
     hypertension: Literal[0, 1]
@@ -71,11 +72,13 @@ class PredictionRequest(BaseModel):
     avg_glucose_level: float = Field(
         ...,
         gt=0,
+        allow_inf_nan=False,
     )
 
     bmi: float = Field(
         ...,
         gt=0,
+        allow_inf_nan=False,
     )
 
     smoking_status: Literal[

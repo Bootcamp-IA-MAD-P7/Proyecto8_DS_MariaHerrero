@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import pytest
@@ -6,6 +7,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.api.main import app
+from src.clinical_safety import (
+    CLINICAL_DISCLAIMER,
+    EXPLAINABILITY_DISCLAIMER,
+)
 from src.database.config import Base, get_db
 from src.database.repositories import (
     AssessmentRepository,
@@ -169,7 +174,53 @@ def test_prediction_contains_explanation():
     assert "factors_increasing_score" in explanation
     assert "factors_decreasing_score" in explanation
     assert "interpretation" in explanation
-    assert "disclaimer" in explanation
+    assert explanation["disclaimer"] == (
+        EXPLAINABILITY_DISCLAIMER
+    )
+
+
+def test_api_uses_centralized_clinical_disclaimer():
+    assert app.description == CLINICAL_DISCLAIMER
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("age", float("nan")),
+        ("age", float("inf")),
+        ("age", float("-inf")),
+        ("avg_glucose_level", float("nan")),
+        ("avg_glucose_level", float("inf")),
+        ("avg_glucose_level", float("-inf")),
+        ("bmi", float("nan")),
+        ("bmi", float("inf")),
+        ("bmi", float("-inf")),
+    ],
+)
+def test_non_finite_numeric_input_returns_422(
+    field,
+    value,
+):
+    payload = VALID_PAYLOAD.copy()
+    payload[field] = value
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/predictions",
+            content=json.dumps(payload),
+            headers={
+                "Content-Type": "application/json",
+            },
+        )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail[0]["type"] == "finite_number"
+    assert detail[0]["input"] in {
+        "NaN",
+        "Infinity",
+        "-Infinity",
+    }
 
 
 def test_invalid_age_returns_422():

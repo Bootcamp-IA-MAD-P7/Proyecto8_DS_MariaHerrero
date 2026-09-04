@@ -1,6 +1,9 @@
 import { Outlet } from "react-router-dom"
 
 import Navbar from "./Navbar"
+import {
+  CLINICAL_DISCLAIMER,
+} from "../constants/clinicalSafety"
 
 function Layout() {
   return (
@@ -13,12 +16,11 @@ function Layout() {
 
       <footer className="app-footer">
         <p>
-          Stroke Risk AI · Herramienta de
-          apoyo a la criba
+          Stroke Risk AI
         </p>
 
         <p>
-          No constituye un diagnóstico médico.
+          {CLINICAL_DISCLAIMER}
         </p>
       </footer>
     </div>

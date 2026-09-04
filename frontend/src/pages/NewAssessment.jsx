@@ -9,6 +9,9 @@ import {
 import {
   createPrediction,
 } from "../services/api"
+import {
+  CLINICAL_DISCLAIMER,
+} from "../constants/clinicalSafety"
 
 
 const INITIAL_FORM = {
@@ -725,9 +728,7 @@ function NewAssessment() {
         </form>
 
         <div className="safety-message">
-          Esta estimación se utiliza como apoyo
-          a la criba preventiva y no constituye
-          un diagnóstico médico.
+          {CLINICAL_DISCLAIMER}
         </div>
       </div>
     </section>

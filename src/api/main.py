@@ -1,9 +1,16 @@
 from contextlib import asynccontextmanager
+import math
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from src.clinical_safety import (
+    CLINICAL_DISCLAIMER,
+)
 from src.api.schemas import (
     AssessmentHistoryDetail,
     AssessmentHistoryItem,
@@ -57,18 +64,58 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Stroke Risk Prediction API",
-    description=(
-        "API para estimación de riesgo de "
-        "stroke como herramienta de apoyo "
-        "a la criba. "
-        "Las predicciones no constituyen "
-        "un diagnóstico médico."
-    ),
+    description=CLINICAL_DISCLAIMER,
     version="1.0.0",
     lifespan=lifespan,
 )
 
 app.state.session_factory = SessionLocal
+
+
+def sanitize_validation_value(value):
+    if (
+        isinstance(value, float)
+        and not math.isfinite(value)
+    ):
+        if math.isnan(value):
+            return "NaN"
+
+        return (
+            "Infinity"
+            if value > 0
+            else "-Infinity"
+        )
+
+    if isinstance(value, dict):
+        return {
+            key: sanitize_validation_value(item)
+            for key, item in value.items()
+        }
+
+    if isinstance(value, (list, tuple)):
+        return [
+            sanitize_validation_value(item)
+            for item in value
+        ]
+
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(
+    _request,
+    exc,
+):
+    errors = sanitize_validation_value(
+        exc.errors()
+    )
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": jsonable_encoder(errors),
+        },
+    )
 
 
 app.add_middleware(

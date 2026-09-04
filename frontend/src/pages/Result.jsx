@@ -3,6 +3,11 @@ import {
   useLocation,
 } from "react-router-dom"
 
+import {
+  CLINICAL_DISCLAIMER,
+  safeClassificationLabel,
+} from "../constants/clinicalSafety"
+
 
 const FEATURE_LABELS = {
   age: "Edad",
@@ -172,10 +177,7 @@ function Result() {
           </div>
 
           <div className="safety-message">
-            Esta herramienta sirve como apoyo
-            a la criba y no sustituye la
-            valoración de un profesional
-            sanitario.
+            {CLINICAL_DISCLAIMER}
           </div>
         </div>
       </section>
@@ -184,9 +186,6 @@ function Result() {
 
   const explanation =
     result.explanation
-
-  const aboveThreshold =
-    result.prediction === 1
 
   const scorePercentage =
     (
@@ -227,9 +226,9 @@ function Result() {
 
           <h2>
             {
-              aboveThreshold
-                ? "Por encima del umbral"
-                : "Por debajo del umbral"
+              safeClassificationLabel(
+                result.prediction
+              )
             }
           </h2>
 
