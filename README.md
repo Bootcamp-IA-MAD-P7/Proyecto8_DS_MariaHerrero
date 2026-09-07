@@ -112,6 +112,44 @@ python -m src.models.final_model
 
 Los datos locales de ejecución de MLflow (`mlflow.db`, `mlruns/` y `mlartifacts/`) se excluyen intencionadamente de Git. La aplicación desplegada continúa cargando los artifacts versionados joblib/JSON existentes y no necesita que el servidor o la interfaz de MLflow estén activos.
 
+## 🐳 Docker
+
+La aplicación completa requiere Docker con Docker Compose y se inicia desde la raíz del repositorio:
+
+```powershell
+docker compose up --build -d
+```
+
+Servicios disponibles:
+
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend API: [http://localhost:8000](http://localhost:8000)
+- Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
+- MLflow: [http://localhost:5001](http://localhost:5001)
+
+Para consultar el estado y los logs:
+
+```powershell
+docker compose ps
+docker compose logs
+```
+
+Para detener el stack:
+
+```powershell
+docker compose down
+```
+
+SQLite persiste sus datos en el volumen `app_data`, y las migraciones Alembic se aplican automáticamente al arrancar el backend. El comando `docker compose down -v` elimina los volúmenes y, por tanto, los datos persistidos.
+
+La inferencia carga los artifacts versionados y no depende de que MLflow esté disponible:
+
+- `stroke_model_logreg_v1.joblib`
+- `threshold_logreg_v1.json`
+- `reference_values_logreg_v1.json`
+
+La imagen backend contiene únicamente estos artifacts de inferencia, no los datasets de entrenamiento. `reference_values_logreg_v1.json` conserva los valores agregados y reproducibles que utiliza la explicación de predicciones, evitando incluir `train.csv` en la imagen.
+
 ## ✅ Testing
 
 La suite completa se ejecuta desde la raíz del proyecto con un único comando:

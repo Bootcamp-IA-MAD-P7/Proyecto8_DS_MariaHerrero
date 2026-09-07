@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -8,6 +10,12 @@ from src.api.services.prediction_service import PredictionService
 from src.database.config import Base
 from src.database.models import Assessment, Prediction
 from src.database.repositories import PatientRepository
+from src.models.explainability import (
+    build_reference_values,
+)
+from src.models.generate_reference_values import (
+    generate_reference_values_artifact,
+)
 
 
 PATIENT_DATA = {
@@ -64,6 +72,9 @@ def prediction_dependencies(tmp_path):
         expire_on_commit=False,
     )
     train_path = tmp_path / "train.csv"
+    reference_values_path = (
+        tmp_path / "reference_values.json"
+    )
     training_data = pd.DataFrame(
         [
             {**PATIENT_DATA, "stroke": 0},
@@ -76,9 +87,17 @@ def prediction_dependencies(tmp_path):
         ]
     ).drop(columns=["origin"])
     training_data.to_csv(train_path, index=False)
+    generate_reference_values_artifact(
+        train_path,
+        reference_values_path,
+    )
 
     try:
-        yield session_factory, train_path
+        yield (
+            session_factory,
+            train_path,
+            reference_values_path,
+        )
     finally:
         engine.dispose()
 
@@ -86,11 +105,13 @@ def prediction_dependencies(tmp_path):
 def create_service(
     probability,
     session_factory,
-    train_path,
+    reference_values_path,
 ):
     return PredictionService(
         FakeModelService(probability),
-        train_path=train_path,
+        reference_values_path=(
+            reference_values_path
+        ),
         session_factory=session_factory,
     )
 
@@ -108,11 +129,15 @@ def test_prediction_respects_threshold_boundary(
     score,
     expected_prediction,
 ):
-    session_factory, train_path = prediction_dependencies
+    (
+        session_factory,
+        _train_path,
+        reference_values_path,
+    ) = prediction_dependencies
     service = create_service(
         score,
         session_factory,
-        train_path,
+        reference_values_path,
     )
 
     result = service.predict(PATIENT_DATA)
@@ -126,11 +151,15 @@ def test_prediction_respects_threshold_boundary(
 def test_prediction_creates_patient_and_persists_origin(
     prediction_dependencies,
 ):
-    session_factory, train_path = prediction_dependencies
+    (
+        session_factory,
+        _train_path,
+        reference_values_path,
+    ) = prediction_dependencies
     service = create_service(
         0.75,
         session_factory,
-        train_path,
+        reference_values_path,
     )
 
     result = service.predict(PATIENT_DATA)
@@ -157,7 +186,11 @@ def test_prediction_creates_patient_and_persists_origin(
 def test_prediction_reuses_existing_patient(
     prediction_dependencies,
 ):
-    session_factory, train_path = prediction_dependencies
+    (
+        session_factory,
+        _train_path,
+        reference_values_path,
+    ) = prediction_dependencies
     db = session_factory()
     try:
         patient = PatientRepository(db).create()
@@ -167,7 +200,7 @@ def test_prediction_reuses_existing_patient(
     service = create_service(
         0.25,
         session_factory,
-        train_path,
+        reference_values_path,
     )
     patient_data = {
         **PATIENT_DATA,
@@ -192,11 +225,15 @@ def test_prediction_reuses_existing_patient(
 def test_prediction_rejects_unknown_patient_id(
     prediction_dependencies,
 ):
-    session_factory, train_path = prediction_dependencies
+    (
+        session_factory,
+        _train_path,
+        reference_values_path,
+    ) = prediction_dependencies
     service = create_service(
         0.75,
         session_factory,
-        train_path,
+        reference_values_path,
     )
     patient_data = {
         **PATIENT_DATA,
@@ -208,3 +245,108 @@ def test_prediction_rejects_unknown_patient_id(
         match="No existe un paciente con id 999",
     ):
         service.predict(patient_data)
+
+
+def test_generated_reference_values_match_existing_calculation(
+    prediction_dependencies,
+):
+    (
+        _session_factory,
+        train_path,
+        reference_values_path,
+    ) = prediction_dependencies
+    train = pd.read_csv(train_path)
+    expected = build_reference_values(
+        train.drop(columns=["stroke"])
+    )
+    stored = json.loads(
+        reference_values_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert stored["reference_values"] == {
+        key: (
+            value.item()
+            if isinstance(value, np.generic)
+            else value
+        )
+        for key, value in expected.items()
+    }
+
+
+def test_reference_values_artifact_must_exist(
+    prediction_dependencies,
+    tmp_path,
+):
+    session_factory, _, _ = prediction_dependencies
+
+    with pytest.raises(FileNotFoundError):
+        create_service(
+            0.5,
+            session_factory,
+            tmp_path / "missing.json",
+        )
+
+
+@pytest.mark.parametrize(
+    ("content", "error_type", "message"),
+    [
+        (
+            "{invalid",
+            json.JSONDecodeError,
+            None,
+        ),
+        (
+            {"model_version": "logreg_v1"},
+            ValueError,
+            "reference_values válidos",
+        ),
+        (
+            {
+                "model_version": "logreg_v1",
+                "reference_values": {"age": 45.0},
+            },
+            ValueError,
+            "claves de reference_values",
+        ),
+        (
+            {
+                "model_version": "other_version",
+                "reference_values": {},
+            },
+            ValueError,
+            "versión de los valores",
+        ),
+    ],
+)
+def test_reference_values_artifact_is_validated(
+    prediction_dependencies,
+    tmp_path,
+    content,
+    error_type,
+    message,
+):
+    session_factory, _, _ = prediction_dependencies
+    artifact_path = tmp_path / "invalid.json"
+
+    if isinstance(content, str):
+        artifact_path.write_text(
+            content,
+            encoding="utf-8",
+        )
+    else:
+        artifact_path.write_text(
+            json.dumps(content),
+            encoding="utf-8",
+        )
+
+    with pytest.raises(
+        error_type,
+        match=message,
+    ):
+        create_service(
+            0.5,
+            session_factory,
+            artifact_path,
+        )

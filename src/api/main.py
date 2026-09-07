@@ -41,6 +41,8 @@ prediction_service = None
 async def lifespan(app: FastAPI):
     global prediction_service
 
+    prediction_service = None
+
     try:
         model_service.load()
 
@@ -184,10 +186,15 @@ def assessment_history_data(
     tags=["Health"],
 )
 def health():
+    prediction_available = (
+        model_service.is_loaded
+        and prediction_service is not None
+    )
+
     return {
         "status": (
             "ok"
-            if model_service.is_loaded
+            if prediction_available
             else "degraded"
         ),
         "model_loaded": (

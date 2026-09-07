@@ -1,4 +1,8 @@
 from datetime import datetime, timedelta
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -24,6 +28,89 @@ PATIENT_DATA = {
     "bmi": 36.6,
     "smoking_status": "formerly smoked",
 }
+
+
+def test_database_url_defaults_to_local_app_database(
+    tmp_path,
+):
+    environment = os.environ.copy()
+    environment.pop("DATABASE_URL", None)
+    project_root = Path(__file__).resolve().parents[1]
+    environment["PYTHONPATH"] = os.pathsep.join(
+        filter(
+            None,
+            [
+                str(project_root),
+                environment.get("PYTHONPATH"),
+            ],
+        )
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from configs.settings import "
+                "DATABASE_URL; print(DATABASE_URL)"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+        cwd=tmp_path,
+    )
+
+    assert result.stdout.strip() == (
+        "sqlite:///data/stroke_app.db"
+    )
+
+
+def test_database_url_environment_override_is_used(
+    tmp_path,
+):
+    database_path = tmp_path / "configured" / "app.db"
+    database_url = (
+        f"sqlite:///{database_path.as_posix()}"
+    )
+    environment = os.environ.copy()
+    environment["DATABASE_URL"] = database_url
+    project_root = Path(__file__).resolve().parents[1]
+    environment["PYTHONPATH"] = os.pathsep.join(
+        filter(
+            None,
+            [
+                str(project_root),
+                environment.get("PYTHONPATH"),
+            ],
+        )
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from src.database.config import "
+                "DATABASE_URL, engine, SessionLocal; "
+                "session = SessionLocal(); "
+                "print(DATABASE_URL); "
+                "print(engine.url); "
+                "session.close(); "
+                "engine.dispose()"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+        cwd=tmp_path,
+    )
+    output = result.stdout.strip().splitlines()
+
+    assert output == [database_url, database_url]
+    assert database_path.parent.is_dir()
 
 
 def create_test_session(tmp_path):

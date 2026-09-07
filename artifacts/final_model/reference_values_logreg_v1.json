@@ -1,0 +1,23 @@
+{
+    "model_version": "logreg_v1",
+    "source": {
+        "dataset": "data/processed/train.csv",
+        "sha256": "25a800e889db9d0ced43b33bde52faadaa0002869a78b674c81027ab57df6c1f"
+    },
+    "aggregation": {
+        "numeric": "median",
+        "categorical": "mode_dropna_first"
+    },
+    "reference_values": {
+        "gender": "Female",
+        "age": 45.0,
+        "hypertension": 0.0,
+        "heart_disease": 0.0,
+        "ever_married": "Yes",
+        "work_type": "Private",
+        "Residence_type": "Urban",
+        "avg_glucose_level": 92.04,
+        "bmi": 28.3,
+        "smoking_status": "never smoked"
+    }
+}

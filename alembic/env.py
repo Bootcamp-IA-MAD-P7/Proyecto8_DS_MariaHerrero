@@ -5,11 +5,16 @@ from sqlalchemy import pool
 
 from alembic import context
 
+from configs.settings import DATABASE_URL
 from src.database.config import Base
 from src.database import models  # noqa: F401
 
 
 config = context.config
+config.set_main_option(
+    "sqlalchemy.url",
+    DATABASE_URL,
+)
 
 
 if config.config_file_name is not None:

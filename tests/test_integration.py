@@ -6,6 +6,9 @@ import src.api.main as api_main
 from src.api.services.prediction_service import (
     PredictionService as RealPredictionService,
 )
+from src.models.generate_reference_values import (
+    generate_reference_values_artifact,
+)
 
 
 PAYLOAD = {
@@ -53,6 +56,9 @@ def test_prediction_is_persisted_and_available_in_history(
     tmp_path,
 ):
     train_path = tmp_path / "train.csv"
+    reference_values_path = (
+        tmp_path / "reference_values.json"
+    )
     pd.DataFrame(
         [
             {**PAYLOAD, "stroke": 0},
@@ -67,6 +73,10 @@ def test_prediction_is_persisted_and_available_in_history(
         train_path,
         index=False,
     )
+    generate_reference_values_artifact(
+        train_path,
+        reference_values_path,
+    )
     model_service = LoadedModelService()
 
     def create_prediction_service(
@@ -75,7 +85,9 @@ def test_prediction_is_persisted_and_available_in_history(
     ):
         return RealPredictionService(
             service,
-            train_path=train_path,
+            reference_values_path=(
+                reference_values_path
+            ),
             session_factory=session_factory,
         )
 
