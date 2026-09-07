@@ -16,6 +16,16 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
 from src.preprocessing.pipeline import create_preprocessor
+from src.tracking.mlflow_tracking import (
+    MODEL_SELECTION_EXPERIMENT,
+    configure_tracking,
+    log_existing_artifacts,
+    log_metrics,
+    log_params,
+    log_tags,
+    select_experiment,
+    start_run,
+)
 
 from sklearn.calibration import CalibratedClassifierCV
 
@@ -121,8 +131,9 @@ def main():
     y_val = validation[TARGET]
 
     results = []
+    models = build_models()
 
-    for name, estimator in build_models().items():
+    for name, estimator in models.items():
         pipeline = Pipeline(
             steps=[
                 ("preprocessor", create_preprocessor()),
@@ -152,6 +163,83 @@ def main():
         REPORT_PATH,
         index=False,
     )
+
+    configure_tracking()
+    select_experiment(
+        MODEL_SELECTION_EXPERIMENT
+    )
+
+    run_names = {
+        "LogisticRegression": "classic-logistic-regression",
+        "DecisionTree": "classic-decision-tree",
+        "RandomForest": "classic-random-forest",
+        "GradientBoosting": "classic-gradient-boosting",
+        "SVM": "classic-calibrated-svm",
+    }
+    model_params = {
+        "LogisticRegression": {
+            "C": 1.0,
+            "solver": "lbfgs",
+            "max_iter": 1000,
+            "random_state": RANDOM_SEED,
+        },
+        "DecisionTree": {
+            "criterion": "gini",
+            "splitter": "best",
+            "random_state": RANDOM_SEED,
+        },
+        "RandomForest": {
+            "n_estimators": 200,
+            "random_state": RANDOM_SEED,
+        },
+        "GradientBoosting": {
+            "n_estimators": 100,
+            "learning_rate": 0.1,
+            "random_state": RANDOM_SEED,
+        },
+        "SVM": {
+            "C": 1.0,
+            "kernel": "rbf",
+            "calibration_method": "sigmoid",
+            "calibration_cv": 5,
+            "random_state": RANDOM_SEED,
+        },
+    }
+
+    for result in results:
+        algorithm = result["model"]
+        params = {
+            "algorithm": algorithm,
+            "preprocessing": "create_preprocessor",
+            **model_params[algorithm],
+        }
+
+        with start_run(
+            run_name=run_names[algorithm]
+        ):
+            log_params(params)
+            log_metrics(
+                {
+                    key: float(value)
+                    for key, value in result.items()
+                    if key != "model"
+                }
+            )
+            log_tags(
+                {
+                    "project": "stroke-risk-ai",
+                    "experiment_type": "classic_models",
+                    "stage": "model_selection",
+                    "algorithm": algorithm,
+                    "target": TARGET,
+                    "data_split": "train_validation",
+                    "tracking_source": "native_run",
+                }
+            )
+            log_existing_artifacts(
+                [REPORT_PATH],
+                artifact_path="reports",
+            )
 
     print("\n=== CLASSIC MODELS COMPARISON ===")
     print(

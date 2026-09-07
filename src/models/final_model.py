@@ -3,6 +3,7 @@ import json
 
 import joblib
 import matplotlib.pyplot as plt
+import mlflow.sklearn
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import LogisticRegression
@@ -18,6 +19,17 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 
 from src.preprocessing.pipeline import create_preprocessor
+from src.tracking.mlflow_tracking import (
+    FINAL_MODEL_EXPERIMENT,
+    REGISTERED_MODEL_NAME,
+    configure_tracking,
+    log_existing_artifacts,
+    log_metrics,
+    log_params,
+    log_tags,
+    select_experiment,
+    start_run,
+)
 
 
 TRAIN_PATH = Path("data/processed/train.csv")
@@ -398,6 +410,99 @@ def main():
         model,
         X_train,
     )
+
+    configure_tracking()
+    select_experiment(
+        FINAL_MODEL_EXPERIMENT
+    )
+
+    with start_run(
+        run_name="final-model-logreg-v1"
+    ):
+        log_tags(
+            {
+                "project": "stroke-risk-ai",
+                "experiment_type": "final_model",
+                "stage": "final",
+                "algorithm": "LogisticRegression",
+                "model_version": MODEL_VERSION,
+                "target": TARGET,
+                "tracking_source": "native_run",
+                "data_split": "train_test",
+            }
+        )
+        log_params(
+            {
+                "algorithm": "LogisticRegression",
+                "C": BEST_C,
+                "solver": BEST_SOLVER,
+                "max_iter": BEST_MAX_ITER,
+                "class_weight": "balanced",
+                "random_seed": RANDOM_SEED,
+                "calibration_method": (
+                    CALIBRATION_METHOD
+                ),
+                "calibration_cv": 5,
+                "threshold": SELECTED_THRESHOLD,
+                "threshold_selected_on": (
+                    "validation"
+                ),
+                "model_version": MODEL_VERSION,
+                "preprocessing": (
+                    "create_preprocessor"
+                ),
+            }
+        )
+        log_metrics(
+            {
+                **{
+                    f"train_{key}": float(value)
+                    for key, value in (
+                        train_metrics.items()
+                    )
+                },
+                **{
+                    f"test_{key}": float(value)
+                    for key, value in (
+                        test_metrics.items()
+                    )
+                },
+                "train_test_f1_gap": float(gap),
+            }
+        )
+        log_existing_artifacts(
+            [
+                MODEL_PATH,
+                PREPROCESSOR_PATH,
+                THRESHOLD_PATH,
+                REPORT_PATH,
+                RANKING_PATH,
+                CONFUSION_MATRIX_PATH,
+            ],
+            artifact_path="project-artifacts",
+        )
+        mlflow.sklearn.log_model(
+            sk_model=model,
+            name="model",
+            registered_model_name=(
+                REGISTERED_MODEL_NAME
+            ),
+            metadata={
+                "model_version": MODEL_VERSION,
+                "threshold": SELECTED_THRESHOLD,
+            },
+            skops_trusted_types=[
+                "numpy.dtype",
+                (
+                    "sklearn.calibration."
+                    "_CalibratedClassifier"
+                ),
+                (
+                    "sklearn.calibration."
+                    "_SigmoidCalibration"
+                ),
+            ],
+        )
 
     print(
         "\n=== FINAL MODEL ==="

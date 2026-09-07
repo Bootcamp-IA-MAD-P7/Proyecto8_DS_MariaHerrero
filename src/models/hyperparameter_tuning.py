@@ -12,6 +12,16 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 
 from src.preprocessing.pipeline import create_preprocessor
+from src.tracking.mlflow_tracking import (
+    MODEL_SELECTION_EXPERIMENT,
+    configure_tracking,
+    log_existing_artifacts,
+    log_metrics,
+    log_params,
+    log_tags,
+    select_experiment,
+    start_run,
+)
 
 
 TRAIN_PATH = Path("data/processed/train.csv")
@@ -182,6 +192,69 @@ def main():
         BEST_PARAMS_PATH,
         index=False,
     )
+
+    configure_tracking()
+    select_experiment(
+        MODEL_SELECTION_EXPERIMENT
+    )
+
+    with start_run(
+        run_name=(
+            "hyperparameter-tuning-logistic-regression"
+        )
+    ):
+        log_params(
+            {
+                "algorithm": "LogisticRegression",
+                "sampler": "TPESampler",
+                "number_of_trials": N_TRIALS,
+                "objective": "recall_mean",
+                "cv_strategy": "StratifiedKFold",
+                "cv_folds": N_SPLITS,
+                "cv_shuffle": True,
+                "random_state": RANDOM_SEED,
+                "class_weight": "balanced",
+                "preprocessing": "create_preprocessor",
+                "best_C": study.best_params["C"],
+                "best_solver": study.best_params["solver"],
+                "best_max_iter": study.best_params["max_iter"],
+            }
+        )
+        log_metrics(
+            {
+                "best_recall_cv": float(
+                    study.best_value
+                ),
+                "best_roc_auc_mean": float(
+                    study.best_trial.user_attrs[
+                        "roc_auc_mean"
+                    ]
+                ),
+                "best_pr_auc_mean": float(
+                    study.best_trial.user_attrs[
+                        "pr_auc_mean"
+                    ]
+                ),
+            }
+        )
+        log_tags(
+            {
+                "project": "stroke-risk-ai",
+                "experiment_type": "hyperparameter_tuning",
+                "stage": "model_selection",
+                "algorithm": "LogisticRegression",
+                "target": TARGET,
+                "data_split": "cross_validation",
+                "tracking_source": "native_run",
+            }
+        )
+        log_existing_artifacts(
+            [
+                REPORT_PATH,
+                BEST_PARAMS_PATH,
+            ],
+            artifact_path="reports",
+        )
 
     print("\n=== OPTUNA BEST RESULT ===")
     print(best_result.to_string(index=False))

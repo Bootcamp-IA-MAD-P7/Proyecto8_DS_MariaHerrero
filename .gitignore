@@ -35,6 +35,8 @@ models/*
 !models/.gitkeep
 artifacts/
 mlruns/
+mlartifacts/
+mlflow.db
 
 # Frontend
 frontend/node_modules/

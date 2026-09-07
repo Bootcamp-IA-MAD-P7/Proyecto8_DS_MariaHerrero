@@ -21,7 +21,7 @@ MODEL_THRESHOLD = float(
 
 MLFLOW_TRACKING_URI = os.getenv(
     "MLFLOW_TRACKING_URI",
-    "http://localhost:5000",
+    "sqlite:///mlflow.db",
 )
 
 RANDOM_SEED = int(

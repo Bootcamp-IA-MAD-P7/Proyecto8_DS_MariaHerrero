@@ -8,6 +8,16 @@ from sklearn.metrics import brier_score_loss
 from sklearn.pipeline import Pipeline
 
 from src.preprocessing.pipeline import create_preprocessor
+from src.tracking.mlflow_tracking import (
+    CALIBRATION_THRESHOLD_EXPERIMENT,
+    configure_tracking,
+    log_existing_artifacts,
+    log_metrics,
+    log_params,
+    log_tags,
+    select_experiment,
+    start_run,
+)
 
 
 TRAIN_PATH = Path("data/processed/train.csv")
@@ -156,6 +166,67 @@ def main():
         REPORT_PATH,
         index=False,
     )
+
+    configure_tracking()
+    select_experiment(
+        CALIBRATION_THRESHOLD_EXPERIMENT
+    )
+
+    run_names = {
+        "uncalibrated": "calibration-uncalibrated",
+        "sigmoid": "calibration-sigmoid",
+        "isotonic": "calibration-isotonic",
+    }
+
+    for result in results:
+        method = result["model"]
+        params = {
+            "algorithm": "LogisticRegression",
+            "calibration_method": (
+                "none"
+                if method == "uncalibrated"
+                else method
+            ),
+            "C": BEST_C,
+            "solver": BEST_SOLVER,
+            "max_iter": BEST_MAX_ITER,
+            "class_weight": "balanced",
+            "random_state": RANDOM_SEED,
+            "preprocessing": "create_preprocessor",
+        }
+
+        if method != "uncalibrated":
+            params["calibration_cv"] = 5
+
+        with start_run(
+            run_name=run_names[method]
+        ):
+            log_params(params)
+            log_metrics(
+                {
+                    "brier_score": float(
+                        result["brier_score"]
+                    )
+                }
+            )
+            log_tags(
+                {
+                    "project": "stroke-risk-ai",
+                    "experiment_type": "probability_calibration",
+                    "stage": "calibration_threshold",
+                    "algorithm": "LogisticRegression",
+                    "target": TARGET,
+                    "data_split": "validation",
+                    "tracking_source": "native_run",
+                }
+            )
+            log_existing_artifacts(
+                [
+                    REPORT_PATH,
+                    CURVE_PATH,
+                ],
+                artifact_path="reports",
+            )
 
     print("\n=== CALIBRATION COMPARISON ===")
     print(results_df.to_string(index=False))

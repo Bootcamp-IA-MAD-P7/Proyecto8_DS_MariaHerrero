@@ -14,6 +14,16 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 
 from src.preprocessing.pipeline import create_preprocessor
+from src.tracking.mlflow_tracking import (
+    MODEL_SELECTION_EXPERIMENT,
+    configure_tracking,
+    log_existing_artifacts,
+    log_metrics,
+    log_params,
+    log_tags,
+    select_experiment,
+    start_run,
+)
 
 
 TRAIN_PATH = Path("data/processed/train.csv")
@@ -125,8 +135,10 @@ def main():
     y = train[TARGET]
 
     all_results = []
+    results_by_model = {}
+    candidate_models = build_candidate_models()
 
-    for name, estimator in build_candidate_models().items():
+    for name, estimator in candidate_models.items():
         model_results = evaluate_cross_validation(
             name,
             estimator,
@@ -135,6 +147,7 @@ def main():
         )
 
         all_results.append(model_results)
+        results_by_model[name] = model_results
 
     results_df = pd.concat(
         all_results,
@@ -152,6 +165,79 @@ def main():
     )
 
     summary = summarize_results(results_df)
+
+    configure_tracking()
+    select_experiment(
+        MODEL_SELECTION_EXPERIMENT
+    )
+
+    run_names = {
+        "LogisticRegression": (
+            "cross-validation-logistic-regression"
+        ),
+        "GradientBoosting": (
+            "cross-validation-gradient-boosting"
+        ),
+    }
+    model_params = {
+        "LogisticRegression": {
+            "max_iter": 1000,
+            "random_state": RANDOM_SEED,
+        },
+        "GradientBoosting": {
+            "n_estimators": 100,
+            "learning_rate": 0.1,
+            "random_state": RANDOM_SEED,
+        },
+    }
+
+    for name in results_by_model:
+        metrics = {
+            f"{metric}_{statistic}": float(
+                summary.loc[
+                    name,
+                    (metric, statistic),
+                ]
+            )
+            for metric in (
+                "precision",
+                "recall",
+                "f1",
+                "roc_auc",
+                "pr_auc",
+            )
+            for statistic in ("mean", "std")
+        }
+        params = {
+            "algorithm": name,
+            "cv_strategy": "StratifiedKFold",
+            "cv_folds": N_SPLITS,
+            "cv_shuffle": True,
+            "random_state": RANDOM_SEED,
+            "preprocessing": "create_preprocessor",
+            **model_params[name],
+        }
+
+        with start_run(
+            run_name=run_names[name]
+        ):
+            log_params(params)
+            log_metrics(metrics)
+            log_tags(
+                {
+                    "project": "stroke-risk-ai",
+                    "experiment_type": "cross_validation",
+                    "stage": "model_selection",
+                    "algorithm": name,
+                    "target": TARGET,
+                    "data_split": "cross_validation",
+                    "tracking_source": "native_run",
+                }
+            )
+            log_existing_artifacts(
+                [REPORT_PATH],
+                artifact_path="reports",
+            )
 
     print("\n=== CROSS VALIDATION RESULTS ===")
     print(summary.round(4))
