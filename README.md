@@ -150,6 +150,29 @@ La inferencia carga los artifacts versionados y no depende de que MLflow esté d
 
 La imagen backend contiene únicamente estos artifacts de inferencia, no los datasets de entrenamiento. `reference_values_logreg_v1.json` conserva los valores agregados y reproducibles que utiliza la explicación de predicciones, evitando incluir `train.csv` en la imagen.
 
+## 🚂 Despliegue en Railway
+
+El despliegue mínimo utiliza dos servicios Railway dentro del mismo proyecto y entorno. El frontend React se sirve con Nginx desde un dominio público y reenvía `/api/v1` al backend FastAPI mediante la red privada de Railway. El backend mantiene SQLite en un volumen persistente; MLflow no se despliega porque no es necesario para la inferencia.
+
+Configuración del servicio `backend`:
+
+- Dockerfile: `Dockerfile` en la raíz del repositorio.
+- `DATABASE_URL=sqlite:////app/data/stroke_app.db`.
+- Railway Volume montado en `/app/data`.
+- `PORT` es proporcionado por Railway; localmente se utiliza `8000` por defecto.
+- Healthcheck: `/api/v1/health`.
+- Una sola réplica, necesaria para utilizar SQLite de forma segura.
+
+Configuración del servicio `frontend`:
+
+- Root Directory: `/frontend`; Dockerfile: `Dockerfile`.
+- `VITE_API_URL=/api/v1`.
+- `BACKEND_HOST=${{backend.RAILWAY_PRIVATE_DOMAIN}}`.
+- `BACKEND_PORT=${{backend.PORT}}`.
+- Nginx escucha en el `PORT` proporcionado por Railway y utiliza por defecto el puerto `80` fuera de Railway.
+
+Las referencias entre servicios evitan versionar hostnames concretos. Solo el frontend necesita dominio público; el navegador nunca accede directamente a la red privada. Para verificar el despliegue, debe responder correctamente `https://<dominio-frontend>/api/v1/health`. Después se realiza una evaluación desde `/assessment` y se comprueba que aparece en `/history`, incluida tras reiniciar o redesplegar el backend sin eliminar el volumen.
+
 ## ✅ Testing
 
 La suite completa se ejecuta desde la raíz del proyecto con un único comando:
