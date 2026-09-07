@@ -7,7 +7,7 @@ APP_ENV = os.getenv("APP_ENV", "development")
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "sqlite:///./stroke_risk.db",
+    "sqlite:///data/stroke_app.db",
 )
 
 MODEL_PATH = os.getenv(

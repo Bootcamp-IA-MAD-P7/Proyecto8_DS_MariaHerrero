@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pandas as pd
 
 from src.database.config import (
@@ -10,13 +13,27 @@ from src.database.repositories import (
     PredictionRepository,
 )
 from src.models.explainability import (
-    build_reference_values,
     explanation_for_api,
 )
+from src.models.final_model import MODEL_VERSION
 
 
-TRAIN_PATH = "data/processed/train.csv"
-TARGET = "stroke"
+REFERENCE_VALUES_PATH = Path(
+    "artifacts/final_model/"
+    "reference_values_logreg_v1.json"
+)
+EXPECTED_REFERENCE_FEATURES = {
+    "gender",
+    "age",
+    "hypertension",
+    "heart_disease",
+    "ever_married",
+    "work_type",
+    "Residence_type",
+    "avg_glucose_level",
+    "bmi",
+    "smoking_status",
+}
 
 CALIBRATION_METHOD = "sigmoid"
 
@@ -25,7 +42,9 @@ class PredictionService:
     def __init__(
         self,
         model_service,
-        train_path=TRAIN_PATH,
+        reference_values_path=(
+            REFERENCE_VALUES_PATH
+        ),
         session_factory=SessionLocal,
     ):
         self.model_service = (
@@ -36,19 +55,43 @@ class PredictionService:
             session_factory
         )
 
-        train = pd.read_csv(
-            train_path
-        )
+        with open(
+            reference_values_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
 
-        X_train = train.drop(
-            columns=[TARGET]
-        )
-
-        self.reference_values = (
-            build_reference_values(
-                X_train
+        if metadata.get("model_version") != (
+            MODEL_VERSION
+        ):
+            raise ValueError(
+                "La versión de los valores de "
+                "referencia no coincide con el modelo."
             )
+
+        reference_values = metadata.get(
+            "reference_values"
         )
+
+        if not isinstance(
+            reference_values,
+            dict,
+        ):
+            raise ValueError(
+                "El artifact no contiene "
+                "reference_values válidos."
+            )
+
+        if set(reference_values) != (
+            EXPECTED_REFERENCE_FEATURES
+        ):
+            raise ValueError(
+                "Las claves de reference_values "
+                "no coinciden con las esperadas."
+            )
+
+        self.reference_values = reference_values
 
     def predict(
         self,

@@ -4,6 +4,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
+import src.api.main as api_main
 from src.api.main import app
 from src.clinical_safety import (
     CLINICAL_DISCLAIMER,
@@ -94,6 +95,31 @@ def test_health_endpoint():
     data = response.json()
 
     assert data["status"] == "ok"
+    assert data["model_loaded"] is True
+    assert data["model_version"] == "logreg_v1"
+
+
+def test_health_is_degraded_without_prediction_service(
+    monkeypatch,
+):
+    class LoadedModelService:
+        is_loaded = True
+        model_version = "logreg_v1"
+
+    monkeypatch.setattr(
+        api_main,
+        "model_service",
+        LoadedModelService(),
+    )
+    monkeypatch.setattr(
+        api_main,
+        "prediction_service",
+        None,
+    )
+
+    data = api_main.health()
+
+    assert data["status"] == "degraded"
     assert data["model_loaded"] is True
     assert data["model_version"] == "logreg_v1"
 

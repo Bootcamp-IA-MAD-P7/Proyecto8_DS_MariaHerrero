@@ -34,6 +34,13 @@ data/processed/*
 models/*
 !models/.gitkeep
 artifacts/
+!artifacts/
+artifacts/*
+!artifacts/final_model/
+artifacts/final_model/*
+!artifacts/final_model/stroke_model_logreg_v1.joblib
+!artifacts/final_model/threshold_logreg_v1.json
+!artifacts/final_model/reference_values_logreg_v1.json
 mlruns/
 mlartifacts/
 mlflow.db
