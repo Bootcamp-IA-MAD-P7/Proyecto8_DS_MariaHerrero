@@ -17,6 +17,16 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 
 from src.preprocessing.pipeline import create_preprocessor
+from src.tracking.mlflow_tracking import (
+    MODEL_SELECTION_EXPERIMENT,
+    configure_tracking,
+    log_existing_artifacts,
+    log_metrics,
+    log_params,
+    log_tags,
+    select_experiment,
+    start_run,
+)
 
 
 TRAIN_PATH = Path("data/processed/train.csv")
@@ -292,6 +302,98 @@ def main():
         CV_REPORT_PATH,
         index=False,
     )
+
+    configure_tracking()
+    select_experiment(
+        MODEL_SELECTION_EXPERIMENT
+    )
+
+    run_names = {
+        "baseline": "imbalance-baseline",
+        "class_weight": "imbalance-class-weight",
+        "random_oversampling": (
+            "imbalance-random-oversampling"
+        ),
+        "smote": "imbalance-smote",
+    }
+
+    for result in results:
+        strategy = result["strategy"]
+        metrics = {
+            key: float(value)
+            for key, value in result.items()
+            if key != "strategy"
+        }
+        cv_row = cv_results[
+            cv_results["strategy"] == strategy
+        ]
+
+        if not cv_row.empty:
+            metrics.update(
+                {
+                    f"cv_{key}": float(value)
+                    for key, value in (
+                        cv_row.iloc[0].to_dict().items()
+                    )
+                    if key != "strategy"
+                }
+            )
+
+        params = {
+            "algorithm": "LogisticRegression",
+            "balance_strategy": strategy,
+            "max_iter": 1000,
+            "random_state": RANDOM_SEED,
+            "preprocessing": "create_preprocessor",
+        }
+
+        if strategy == "class_weight":
+            params["class_weight"] = "balanced"
+
+        elif strategy == "random_oversampling":
+            params["sampler"] = "RandomOverSampler"
+            params["sampler_random_state"] = (
+                RANDOM_SEED
+            )
+
+        elif strategy == "smote":
+            params["sampler"] = "SMOTE"
+            params["sampler_random_state"] = (
+                RANDOM_SEED
+            )
+
+        if strategy != "baseline":
+            params["cv_strategy"] = "StratifiedKFold"
+            params["cv_folds"] = N_SPLITS
+            params["cv_shuffle"] = True
+
+        with start_run(
+            run_name=run_names[strategy]
+        ):
+            log_params(params)
+            log_metrics(metrics)
+            log_tags(
+                {
+                    "project": "stroke-risk-ai",
+                    "experiment_type": "imbalance",
+                    "stage": "model_selection",
+                    "algorithm": "LogisticRegression",
+                    "target": TARGET,
+                    "data_split": (
+                        "validation"
+                        if strategy == "baseline"
+                        else "validation_cross_validation"
+                    ),
+                    "tracking_source": "native_run",
+                }
+            )
+            log_existing_artifacts(
+                [
+                    REPORT_PATH,
+                    CV_REPORT_PATH,
+                ],
+                artifact_path="reports",
+            )
 
     print("\n=== IMBALANCE CROSS VALIDATION ===")
     print(

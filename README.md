@@ -68,6 +68,50 @@ Las variables disponibles están documentadas en `.env.example`:
 
 Para configuración local puede utilizarse un archivo `.env`, que está excluido del control de versiones.
 
+## 📊 MLflow y seguimiento de experimentos
+
+MLflow se utiliza para comparar y reproducir los experimentos de Machine Learning del proyecto. Cada ejecución registra sus parámetros, métricas, tags y artifacts relevantes en uno de estos experimentos:
+
+- `stroke-risk-model-selection`: baseline, comparación de modelos clásicos, validación cruzada, estrategias de balanceo y optimización de hiperparámetros con Optuna.
+- `stroke-risk-calibration-threshold`: comparación de métodos de calibración, exploración del threshold y evaluación del threshold calibrado.
+- `stroke-risk-final-model`: entrenamiento y evaluación del modelo final seleccionado.
+
+La procedencia del modelo final registrado queda vinculada de forma explícita:
+
+```text
+stroke-risk-final-model
+└── final-model-logreg-v1
+    └── stroke-risk-screening-model (versión 1)
+```
+
+El tracking utiliza por defecto el backend local `sqlite:///mlflow.db`. Puede configurarse otro backend mediante la variable de entorno `MLFLOW_TRACKING_URI`, sin depender de rutas absolutas.
+
+Para consultar los experimentos, desde la raíz del repositorio:
+
+```powershell
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+La interfaz queda disponible en [http://127.0.0.1:5000](http://127.0.0.1:5000).
+
+Los experimentos pueden poblarse ejecutando los siguientes módulos:
+
+```powershell
+python -m src.models.baseline
+python -m src.models.compare_classic_models
+python -m src.models.cross_validation
+python -m src.models.imbalance_comparison
+python -m src.models.hyperparameter_tuning
+python -m src.models.probability_calibration
+python -m src.models.threshold_optimization
+python -m src.models.calibrated_threshold
+python -m src.models.final_model
+```
+
+> ⚠️ Al volver a ejecutar `src.models.final_model`, MLflow puede crear una nueva versión de `stroke-risk-screening-model` en el Model Registry.
+
+Los datos locales de ejecución de MLflow (`mlflow.db`, `mlruns/` y `mlartifacts/`) se excluyen intencionadamente de Git. La aplicación desplegada continúa cargando los artifacts versionados joblib/JSON existentes y no necesita que el servidor o la interfaz de MLflow estén activos.
+
 ## ✅ Testing
 
 La suite completa se ejecuta desde la raíz del proyecto con un único comando:

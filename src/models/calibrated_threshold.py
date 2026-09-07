@@ -13,6 +13,16 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 
 from src.preprocessing.pipeline import create_preprocessor
+from src.tracking.mlflow_tracking import (
+    CALIBRATION_THRESHOLD_EXPERIMENT,
+    configure_tracking,
+    log_existing_artifacts,
+    log_metrics,
+    log_params,
+    log_tags,
+    select_experiment,
+    start_run,
+)
 
 
 TRAIN_PATH = Path("data/processed/train.csv")
@@ -229,6 +239,74 @@ def main():
         SELECTED_THRESHOLD_PATH,
         index=False,
     )
+
+    configure_tracking()
+    select_experiment(
+        CALIBRATION_THRESHOLD_EXPERIMENT
+    )
+
+    with start_run(
+        run_name=(
+            "calibrated-threshold-logistic-regression"
+        )
+    ):
+        log_params(
+            {
+                "algorithm": "LogisticRegression",
+                "model_version": MODEL_VERSION,
+                "C": BEST_C,
+                "solver": BEST_SOLVER,
+                "max_iter": BEST_MAX_ITER,
+                "class_weight": "balanced",
+                "random_state": RANDOM_SEED,
+                "preprocessing": "create_preprocessor",
+                "calibration_method": CALIBRATION_METHOD,
+                "calibration_cv": 5,
+                "threshold_search_start": 0.05,
+                "threshold_search_stop": 0.50,
+                "threshold_search_step": 0.01,
+                "minimum_recall": MIN_RECALL,
+                "selected_threshold": float(
+                    selected["threshold"]
+                ),
+                "threshold_selected_on": "validation",
+            }
+        )
+        log_metrics(
+            {
+                "precision": float(
+                    selected["precision"]
+                ),
+                "recall": float(selected["recall"]),
+                "f1": float(selected["f1"]),
+                "false_negatives": float(
+                    selected["false_negatives"]
+                ),
+                "false_positives": float(
+                    selected["false_positives"]
+                ),
+            }
+        )
+        log_tags(
+            {
+                "project": "stroke-risk-ai",
+                "experiment_type": "calibrated_threshold",
+                "stage": "calibration_threshold",
+                "algorithm": "LogisticRegression",
+                "target": TARGET,
+                "data_split": "validation",
+                "tracking_source": "native_run",
+                "status": "selected",
+                "deployed": "true",
+            }
+        )
+        log_existing_artifacts(
+            [
+                REPORT_PATH,
+                SELECTED_THRESHOLD_PATH,
+            ],
+            artifact_path="reports",
+        )
 
     print(
         "\n=== CALIBRATED THRESHOLD ==="

@@ -16,6 +16,16 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 
 from src.preprocessing.pipeline import create_preprocessor
+from src.tracking.mlflow_tracking import (
+    MODEL_SELECTION_EXPERIMENT,
+    configure_tracking,
+    log_existing_artifacts,
+    log_metrics,
+    log_params,
+    log_tags,
+    select_experiment,
+    start_run,
+)
 
 
 TRAIN_PATH = Path("data/processed/train.csv")
@@ -185,6 +195,66 @@ def main():
 
         plt.savefig(output_path)
         plt.close()
+
+    configure_tracking()
+    select_experiment(
+        MODEL_SELECTION_EXPERIMENT
+    )
+
+    tracking_runs = [
+        (
+            "baseline-dummy",
+            results[0],
+            {
+                "algorithm": "DummyClassifier",
+                "strategy": "most_frequent",
+                "random_state": RANDOM_SEED,
+                "preprocessing": "create_preprocessor",
+            },
+        ),
+        (
+            "baseline-logistic-regression",
+            results[1],
+            {
+                "algorithm": "LogisticRegression",
+                "max_iter": 1000,
+                "random_state": RANDOM_SEED,
+                "preprocessing": "create_preprocessor",
+            },
+        ),
+    ]
+
+    for run_name, result, params in tracking_runs:
+        algorithm = result["model"]
+
+        with start_run(run_name=run_name):
+            log_params(params)
+            log_metrics(
+                {
+                    key: float(value)
+                    for key, value in result.items()
+                    if key != "model"
+                }
+            )
+            log_tags(
+                {
+                    "project": "stroke-risk-ai",
+                    "experiment_type": "baseline",
+                    "stage": "model_selection",
+                    "algorithm": algorithm,
+                    "target": TARGET,
+                    "data_split": "validation",
+                    "tracking_source": "native_run",
+                }
+            )
+            log_existing_artifacts(
+                [
+                    REPORT_PATH,
+                    REPORT_PATH.parent
+                    / f"confusion_matrix_{algorithm}.png",
+                ],
+                artifact_path="reports",
+            )
 
     print("\n=== BASELINE RESULTS ===")
     print(results_df.to_string(index=False))
