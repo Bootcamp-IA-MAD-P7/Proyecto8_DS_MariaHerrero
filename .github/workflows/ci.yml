@@ -10,10 +10,6 @@ permissions:
 jobs:
   backend-and-ml-tests:
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: sqlite:///${{ runner.temp }}/stroke_app.db
-      MLFLOW_TRACKING_URI: sqlite:///${{ runner.temp }}/mlflow.db
-      MPLBACKEND: Agg
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -32,6 +28,10 @@ jobs:
 
       - name: Run backend and ML tests
         run: python -m pytest -q
+        env:
+          DATABASE_URL: sqlite:///${{ runner.temp }}/stroke_app.db
+          MLFLOW_TRACKING_URI: sqlite:///${{ runner.temp }}/mlflow.db
+          MPLBACKEND: Agg
 
   frontend-checks:
     runs-on: ubuntu-latest
