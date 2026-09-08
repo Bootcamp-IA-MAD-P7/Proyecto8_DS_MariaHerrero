@@ -152,7 +152,12 @@ La imagen backend contiene únicamente estos artifacts de inferencia, no los dat
 
 ## 🚂 Despliegue en Railway
 
-El despliegue mínimo utiliza dos servicios Railway dentro del mismo proyecto y entorno. El frontend React se sirve con Nginx desde un dominio público y reenvía `/api/v1` al backend FastAPI mediante la red privada de Railway. El backend mantiene SQLite en un volumen persistente; MLflow no se despliega porque no es necesario para la inferencia.
+El prototipo está desplegado y operativo en Railway:
+
+- Aplicación: [https://frontend-production-e01f.up.railway.app/](https://frontend-production-e01f.up.railway.app/)
+- Formulario de evaluación: [https://frontend-production-e01f.up.railway.app/assessment](https://frontend-production-e01f.up.railway.app/assessment)
+
+La arquitectura de producción utiliza dos servicios dentro del mismo proyecto y entorno: el frontend React se sirve públicamente con Nginx, que reenvía `/api/v1` al backend FastAPI mediante la red privada de Railway. El backend persiste las evaluaciones en SQLite dentro de un volumen montado en `/app/data`.
 
 Configuración del servicio `backend`:
 
@@ -171,7 +176,7 @@ Configuración del servicio `frontend`:
 - `BACKEND_PORT=${{backend.PORT}}`.
 - Nginx escucha en el `PORT` proporcionado por Railway y utiliza por defecto el puerto `80` fuera de Railway.
 
-Las referencias entre servicios evitan versionar hostnames concretos. Solo el frontend necesita dominio público; el navegador nunca accede directamente a la red privada. Para verificar el despliegue, debe responder correctamente `https://<dominio-frontend>/api/v1/health`. Después se realiza una evaluación desde `/assessment` y se comprueba que aparece en `/history`, incluida tras reiniciar o redesplegar el backend sin eliminar el volumen.
+En producción se han validado el healthcheck `/api/v1/health`, el flujo completo de predicción y la consulta del historial persistido. Solo el frontend tiene dominio público; MLflow no se despliega ni es necesario para la inferencia.
 
 ## ✅ Testing
 
