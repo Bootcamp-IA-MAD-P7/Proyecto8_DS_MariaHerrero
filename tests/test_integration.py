@@ -103,7 +103,7 @@ def test_prediction_is_persisted_and_available_in_history(
     )
     monkeypatch.setattr(
         api_main,
-        "prediction_service",
+        "active_predictor",
         None,
     )
 

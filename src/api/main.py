@@ -28,25 +28,27 @@ from src.api.services.model_service import (
     ModelService,
 )
 
+from src.api.predictors import Predictor
+
 from src.api.services.prediction_service import (
     PredictionService,
 )
 
 
 model_service = ModelService()
-prediction_service = None
+active_predictor: Predictor | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global prediction_service
+    global active_predictor
 
-    prediction_service = None
+    active_predictor = None
 
     try:
         model_service.load()
 
-        prediction_service = (
+        active_predictor = (
             PredictionService(
                 model_service,
                 session_factory=(
@@ -188,7 +190,8 @@ def assessment_history_data(
 def health():
     prediction_available = (
         model_service.is_loaded
-        and prediction_service is not None
+        and active_predictor is not None
+        and active_predictor.is_ready
     )
 
     return {
@@ -280,6 +283,22 @@ def get_assessment(
     }
 
 
+def get_predictor() -> Predictor:
+    if (
+        active_predictor is None
+        or not active_predictor.is_ready
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "El modelo de predicción "
+                "no está disponible."
+            ),
+        )
+
+    return active_predictor
+
+
 @app.post(
     "/api/v1/predictions",
     response_model=PredictionResponse,
@@ -308,21 +327,12 @@ def get_assessment(
 )
 def create_prediction(
     request: PredictionRequest,
+    predictor: Predictor = Depends(
+        get_predictor
+    ),
 ):
-    if (
-        not model_service.is_loaded
-        or prediction_service is None
-    ):
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "El modelo de predicción "
-                "no está disponible."
-            ),
-        )
-
     try:
-        return prediction_service.predict(
+        return predictor.predict(
             request
         )
 
