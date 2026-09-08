@@ -1,0 +1,6 @@
+rank,model,selected,reason
+1,Logistic Regression calibrated,True,"Selected for recall, stability, calibration and interpretability"
+2,Gradient Boosting,False,Lower recall and less stable in cross-validation
+3,Random Forest,False,Strong overfitting during validation
+4,Decision Tree,False,Strong overfitting and worse generalization
+5,SVM,False,Lower recall and overall performance

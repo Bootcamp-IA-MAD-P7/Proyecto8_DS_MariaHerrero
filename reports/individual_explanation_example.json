@@ -1,0 +1,48 @@
+{
+    "model_version": "logreg_v1",
+    "score": 0.0335651003113553,
+    "threshold": 0.05,
+    "prediction": 0,
+    "factors_increasing_score": [
+        {
+            "feature": "age",
+            "value": 53.0,
+            "reference_value": 45.0,
+            "influence": 0.009755181619362764
+        },
+        {
+            "feature": "bmi",
+            "value": 35.4,
+            "reference_value": 28.3,
+            "influence": 0.004218747436327844
+        },
+        {
+            "feature": "Residence_type",
+            "value": "Rural",
+            "reference_value": "Urban",
+            "influence": 0.0005448041302424378
+        }
+    ],
+    "factors_decreasing_score": [
+        {
+            "feature": "gender",
+            "value": "Male",
+            "reference_value": "Female",
+            "influence": -0.001984913051508594
+        },
+        {
+            "feature": "avg_glucose_level",
+            "value": 90.12,
+            "reference_value": 92.04,
+            "influence": -0.0005402037300804227
+        },
+        {
+            "feature": "smoking_status",
+            "value": "Unknown",
+            "reference_value": "never smoked",
+            "influence": -0.00048247431166020815
+        }
+    ],
+    "interpretation": "Las influencias describen cómo cada variable modifica el score generado por el modelo respecto a un valor de referencia.",
+    "disclaimer": "La explicación describe el comportamiento del modelo y no implica causalidad médica ni constituye un diagnóstico."
+}

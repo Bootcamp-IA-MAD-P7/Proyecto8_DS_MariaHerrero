@@ -1,0 +1,4 @@
+model,brier_score
+sigmoid,0.04351725153080292
+isotonic,0.04375345390055347
+uncalibrated,0.1959168860097717
