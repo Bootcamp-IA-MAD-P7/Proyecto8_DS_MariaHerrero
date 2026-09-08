@@ -1,82 +1,203 @@
-# 🧠 Stroke Risk AI — Hospital F5
+# 🧠 CEREVIA — Stroke Risk AI
 
-Sistema de cribado preventivo del riesgo de ictus desarrollado como proyecto **Data Scientist / AI Developer**.
+Sistema inteligente de apoyo al cribado del riesgo de ictus desarrollado como proyecto **Data Scientist / AI Developer**.
 
-El sistema utilizará Machine Learning para estimar el riesgo de ictus a partir de datos clínicos y demográficos, proporcionando una herramienta de apoyo para personal sanitario autorizado.
+**Inteligencia que ayuda a anticiparse.**
 
-> ⚠️ Este proyecto es un prototipo educativo. Sus resultados no constituyen un diagnóstico médico.
+CEREVIA combina un pipeline reproducible de Machine Learning con una API, una interfaz web y persistencia de evaluaciones. El predictor desplegado actualmente utiliza datos tabulares clínicos y demográficos.
 
-## 🎯 Objetivo
+> **Aviso:** CEREVIA es un prototipo educativo de apoyo a la criba preliminar. No realiza diagnósticos médicos ni sustituye la valoración de un profesional sanitario.
 
-Desarrollar una solución completa que incluya:
+## Objetivo
 
-- Análisis exploratorio de datos (EDA).
-- Preprocesamiento y validación de datos.
-- Modelos de Machine Learning.
-- Tratamiento del desbalanceo de clases.
-- Optimización de hiperparámetros.
-- Evaluación y explicabilidad del modelo.
-- API con FastAPI.
-- Aplicación web con React.
-- Persistencia de pacientes y predicciones.
-- CLI.
-- Testing.
-- MLflow.
-- Docker.
-- Deep Learning y CNN como evolución de nivel experto.
+Construir una solución de IA completa y trazable capaz de validar datos, comparar modelos, generar estimaciones explicables, conservar evaluaciones y ofrecer el flujo mediante web, API y CLI. El proyecto también explora Deep Learning tabular e imágenes CT sin comprometer el predictor productivo.
 
-## 🛠️ Tecnologías
+## Funcionalidades principales
 
-- Python
-- Pandas
-- NumPy
-- Scikit-learn
-- Optuna
-- MLflow
-- FastAPI
-- React
-- Docker
-- Git / GitHub
+- Nueva evaluación con validación de datos clínicos.
+- Predicción mediante el modelo tabular versionado `logreg_v1`.
+- Clasificación expresada exclusivamente respecto al threshold.
+- Explicación de factores que aumentan o disminuyen el score.
+- Historial cronológico y detalle de evaluaciones persistidas.
+- Trazabilidad de score, threshold, calibración y versión del modelo.
+- Guardrails contra afirmaciones diagnósticas o causales.
+- API REST, CLI, tracking con MLflow y ejecución con Docker.
 
-## 🌿 Ramas principales
+```text
+Nueva evaluación → predicción → interpretación → historial → detalle
+```
 
-- `main` — versión estable.
-- `dev` — integración del desarrollo.
-- `feature/*` — desarrollo de funcionalidades.
+## Dataset y variables
 
-## 📋 Metodología
+El dataset tabular auditado contiene **4.981 registros**, 10 variables predictoras y el target binario `stroke`.
 
-El proyecto utiliza:
+| Grupo | Variables |
+|---|---|
+| Numéricas | `age`, `avg_glucose_level`, `bmi` |
+| Binarias | `hypertension`, `heart_disease` |
+| Categóricas | `gender`, `ever_married`, `work_type`, `Residence_type`, `smoking_status` |
+| Target | `stroke` |
 
-- Specification-Driven Development (SDD).
-- Kanban mediante GitHub Projects.
-- Desarrollo incremental.
-- Validación y testing durante todo el ciclo de desarrollo.
+La clase positiva representa el **4,98 %**, con un ratio aproximado de **19,08:1**. Por ello, accuracy no se utiliza como criterio principal.
 
-## ⚙️ Configuración
+El split es estratificado y reproducible con seed 42:
 
-La configuración de la aplicación se gestiona mediante variables de entorno para evitar dependencias del entorno local y facilitar su ejecución en diferentes plataformas.
+| Split | Registros | Proporción aproximada |
+|---|---:|---:|
+| Train | 3.187 | 64 % |
+| Validation | 797 | 16 % |
+| Test | 997 | 20 % |
 
-Las variables disponibles están documentadas en `.env.example`:
+Test permaneció aislado durante la selección, optimización, calibración y elección del threshold.
 
-- `APP_ENV` — entorno de ejecución de la aplicación.
-- `DATABASE_URL` — conexión a la base de datos.
-- `MODEL_PATH` — ruta relativa al modelo de Machine Learning.
-- `MODEL_THRESHOLD` — umbral utilizado para la clasificación.
-- `MLFLOW_TRACKING_URI` — dirección del servidor de tracking de MLflow.
-- `RANDOM_SEED` — semilla global para garantizar reproducibilidad.
+## Pipeline de Data Science
 
-Para configuración local puede utilizarse un archivo `.env`, que está excluido del control de versiones.
+```mermaid
+flowchart LR
+    A[Auditoría y validación] --> B[Split estratificado]
+    B --> C[Preprocessing con train]
+    C --> D[Modelos y desbalanceo]
+    D --> E[Validación cruzada y Optuna]
+    E --> F[Calibración sigmoid]
+    F --> G[Threshold en validation]
+    G --> H[Evaluación final en test]
+```
 
-## 📊 MLflow y seguimiento de experimentos
+El preprocessing utiliza `ColumnTransformer`:
 
-MLflow se utiliza para comparar y reproducir los experimentos de Machine Learning del proyecto. Cada ejecución registra sus parámetros, métricas, tags y artifacts relevantes en uno de estos experimentos:
+- numéricas: imputación por mediana y `StandardScaler`;
+- binarias: imputación por valor más frecuente;
+- categóricas: imputación por valor más frecuente y `OneHotEncoder` con categorías desconocidas ignoradas;
+- ajuste exclusivo con train para evitar leakage.
 
-- `stroke-risk-model-selection`: baseline, comparación de modelos clásicos, validación cruzada, estrategias de balanceo y optimización de hiperparámetros con Optuna.
-- `stroke-risk-calibration-threshold`: comparación de métodos de calibración, exploración del threshold y evaluación del threshold calibrado.
-- `stroke-risk-final-model`: entrenamiento y evaluación del modelo final seleccionado.
+Se compararon baseline, Logistic Regression, Random Forest, Gradient Boosting, SVM y Decision Tree; estrategias de `class_weight`, Random Oversampling y SMOTE; validación cruzada, Optuna, calibración y optimización de threshold.
 
-La procedencia del modelo final registrado queda vinculada de forma explícita:
+## Modelo final
+
+El predictor productivo es una **Logistic Regression calibrada**:
+
+| Propiedad | Valor |
+|---|---|
+| Versión | `logreg_v1` |
+| `class_weight` | `balanced` |
+| `C` | `0.001486` |
+| Solver | `liblinear` |
+| `max_iter` | `500` |
+| Seed | `42` |
+| Calibración | `sigmoid` |
+| Threshold | `0.05` |
+
+```text
+Preprocessing → Logistic Regression → calibración sigmoid → threshold 0.05
+```
+
+El threshold se fijó exclusivamente con validation para mantener recall elevado y reducir falsos positivos entre las configuraciones válidas.
+
+## Resultados finales
+
+Resultados almacenados sobre test:
+
+| Métrica | Resultado |
+|---|---:|
+| Precision | 0.137809 |
+| Recall | 0.780000 |
+| F1 | 0.234234 |
+| ROC-AUC | 0.825723 |
+| PR-AUC | 0.145957 |
+| TP / FN | 39 / 11 |
+| FP / TN | 244 / 703 |
+
+El modelo detecta 39 de los 50 casos positivos de test. En este prototipo de cribado se priorizaron recall y reducción de falsos negativos frente a precision o accuracy. El compromiso incrementa los falsos positivos y exige interpretar el resultado solo como apoyo preliminar.
+
+Estas métricas describen rendimiento experimental sobre el dataset disponible; **no constituyen validación clínica**.
+
+## Explicabilidad
+
+La explicación individual compara el score original con el obtenido al sustituir cada variable por un valor de referencia aprendido de train: mediana para variables numéricas y moda para categóricas. Los factores se separan y ordenan según aumenten o disminuyan el score.
+
+Las influencias describen comportamiento del modelo, no causalidad médica. Los guardrails están centralizados y cubiertos por tests: la aplicación no afirma que una persona sufrirá o no sufrirá un ictus, no recomienda tratamientos y rechaza entradas imposibles o no finitas.
+
+## Arquitectura de la aplicación
+
+```mermaid
+flowchart LR
+    U[Profesional autorizado] --> R[React · CEREVIA]
+    R -->|/api/v1| N[Nginx]
+    N --> A[FastAPI]
+    A --> P[Predictor tabular]
+    P --> M[logreg_v1]
+    P --> X[Explicabilidad]
+    P --> D[(SQLite)]
+```
+
+- **Frontend:** React, Vite y React Router; Nginx sirve la SPA y actúa como proxy.
+- **Backend:** FastAPI, Pydantic y dependency injection del predictor.
+- **Inferencia:** `PredictionService` coordina modelo, explicación y persistencia.
+- **Persistencia:** SQLAlchemy y Alembic sobre SQLite.
+- **Modelo:** artifacts versionados cargados desde el filesystem.
+
+La interfaz pública utiliza únicamente el predictor tabular. Los modelos experimentales no se cargan durante el arranque productivo.
+
+## Tecnologías
+
+| Área | Tecnologías |
+|---|---|
+| Data Science | Python 3.12, Pandas, NumPy, Scikit-learn, Imbalanced-learn, Optuna |
+| Deep Learning experimental | TensorFlow, Keras |
+| Tracking | MLflow |
+| Backend | FastAPI, Pydantic, Uvicorn |
+| Persistencia | SQLAlchemy, Alembic, SQLite |
+| Frontend | React 19, React Router, Vite, CSS |
+| Infraestructura | Docker, Docker Compose, Nginx, Railway |
+| Calidad | Pytest, ESLint, GitHub Actions |
+
+## Persistencia y trazabilidad
+
+La base de datos relaciona `Patient`, `Assessment`, `ModelVersion` y `Prediction`. Conserva los datos originales, su origen, score, clasificación, threshold y versión utilizada.
+
+`DATABASE_URL` configura la conexión por entorno. Localmente se utiliza `sqlite:///data/stroke_app.db`; Docker y Railway emplean almacenamiento persistente. Alembic aplica las migraciones al iniciar el backend en contenedor.
+
+## API y CLI
+
+| Método | Ruta | Función |
+|---|---|---|
+| `GET` | `/api/v1/health` | Disponibilidad real y versión cargada |
+| `POST` | `/api/v1/predictions` | Crear evaluación y predicción |
+| `GET` | `/api/v1/assessments` | Consultar historial |
+| `GET` | `/api/v1/assessments/{assessment_id}` | Consultar detalle |
+
+Swagger local: [http://localhost:8000/docs](http://localhost:8000/docs).
+
+```powershell
+python -m src.cli.main
+```
+
+La CLI reutiliza schemas, modelo, servicio de predicción, persistencia y mensajes de seguridad.
+
+## Testing
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+La suite usa recursos temporales y aislados cuando corresponde. Cubre validación, splits, preprocessing, leakage, modelos, calibración, threshold, servicios, API, base de datos, CLI, guardrails, explicabilidad, MLflow, integración, Deep Learning y la interfaz común de predictors.
+
+Comprobaciones del frontend:
+
+```powershell
+cd frontend
+npm ci
+npm run lint
+npm run build
+```
+
+## MLflow
+
+MLflow registra parámetros, métricas, tags, artifacts y modelos:
+
+- `stroke-risk-model-selection`: baseline, modelos clásicos, validación cruzada, desbalanceo y Optuna;
+- `stroke-risk-calibration-threshold`: calibración y threshold;
+- `stroke-risk-final-model`: entrenamiento y evaluación final.
 
 ```text
 stroke-risk-final-model
@@ -84,112 +205,174 @@ stroke-risk-final-model
     └── stroke-risk-screening-model (versión 1)
 ```
 
-El tracking utiliza por defecto el backend local `sqlite:///mlflow.db`. Puede configurarse otro backend mediante la variable de entorno `MLFLOW_TRACKING_URI`, sin depender de rutas absolutas.
-
-Para consultar los experimentos, desde la raíz del repositorio:
+El tracking local usa `sqlite:///mlflow.db` y admite override mediante `MLFLOW_TRACKING_URI`.
 
 ```powershell
 mlflow ui --backend-store-uri sqlite:///mlflow.db
 ```
 
-La interfaz queda disponible en [http://127.0.0.1:5000](http://127.0.0.1:5000).
+UI: [http://127.0.0.1:5000](http://127.0.0.1:5000).
 
-Los experimentos pueden poblarse ejecutando los siguientes módulos:
+> Volver a ejecutar `src.models.final_model` puede crear otra versión registrada. No es necesario para ejecutar CEREVIA.
 
-```powershell
-python -m src.models.baseline
-python -m src.models.compare_classic_models
-python -m src.models.cross_validation
-python -m src.models.imbalance_comparison
-python -m src.models.hyperparameter_tuning
-python -m src.models.probability_calibration
-python -m src.models.threshold_optimization
-python -m src.models.calibrated_threshold
-python -m src.models.final_model
-```
+`mlflow.db`, `mlruns/` y `mlartifacts/` no se versionan. La inferencia no necesita MLflow activo.
 
-> ⚠️ Al volver a ejecutar `src.models.final_model`, MLflow puede crear una nueva versión de `stroke-risk-screening-model` en el Model Registry.
+## Docker
 
-Los datos locales de ejecución de MLflow (`mlflow.db`, `mlruns/` y `mlartifacts/`) se excluyen intencionadamente de Git. La aplicación desplegada continúa cargando los artifacts versionados joblib/JSON existentes y no necesita que el servidor o la interfaz de MLflow estén activos.
-
-## 🐳 Docker
-
-La aplicación completa requiere Docker con Docker Compose y se inicia desde la raíz del repositorio:
+Requiere Docker con Docker Compose:
 
 ```powershell
 docker compose up --build -d
 ```
 
-Servicios disponibles:
-
-- Frontend: [http://localhost:5173](http://localhost:5173)
-- Backend API: [http://localhost:8000](http://localhost:8000)
-- Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
-- MLflow: [http://localhost:5001](http://localhost:5001)
-
-Para consultar el estado y los logs:
+| Servicio | URL |
+|---|---|
+| CEREVIA | [http://localhost:5173](http://localhost:5173) |
+| API | [http://localhost:8000](http://localhost:8000) |
+| Swagger | [http://localhost:8000/docs](http://localhost:8000/docs) |
+| MLflow | [http://localhost:5001](http://localhost:5001) |
 
 ```powershell
 docker compose ps
 docker compose logs
-```
-
-Para detener el stack:
-
-```powershell
 docker compose down
 ```
 
-SQLite persiste sus datos en el volumen `app_data`, y las migraciones Alembic se aplican automáticamente al arrancar el backend. El comando `docker compose down -v` elimina los volúmenes y, por tanto, los datos persistidos.
+El stack contiene frontend, backend y MLflow. SQLite persiste en `app_data`; `docker compose down -v` elimina los volúmenes y sus datos. El backend ejecuta `alembic upgrade head` antes de iniciar Uvicorn y opera con un worker.
 
-La inferencia carga los artifacts versionados y no depende de que MLflow esté disponible:
+La imagen no incluye datasets de entrenamiento, solo los artifacts productivos:
 
-- `stroke_model_logreg_v1.joblib`
-- `threshold_logreg_v1.json`
-- `reference_values_logreg_v1.json`
+- `stroke_model_logreg_v1.joblib`;
+- `threshold_logreg_v1.json`;
+- `reference_values_logreg_v1.json`.
 
-La imagen backend contiene únicamente estos artifacts de inferencia, no los datasets de entrenamiento. `reference_values_logreg_v1.json` conserva los valores agregados y reproducibles que utiliza la explicación de predicciones, evitando incluir `train.csv` en la imagen.
+El último contiene valores agregados reproducibles usados por la explicación, evitando incorporar `train.csv`.
 
-## 🚂 Despliegue en Railway
+## Integración continua
 
-El prototipo está desplegado y operativo en Railway:
+`.github/workflows/ci.yml` se activa en Pull Requests y mediante `workflow_dispatch`. Ejecuta en paralelo:
 
-- Aplicación: [https://frontend-production-e01f.up.railway.app/](https://frontend-production-e01f.up.railway.app/)
-- Formulario de evaluación: [https://frontend-production-e01f.up.railway.app/assessment](https://frontend-production-e01f.up.railway.app/assessment)
+1. Python 3.12: instalación y `python -m pytest -q` con SQLite y MLflow temporales.
+2. Node 22: `npm ci`, `npm run lint` y `npm run build`.
 
-La arquitectura de producción utiliza dos servicios dentro del mismo proyecto y entorno: el frontend React se sirve públicamente con Nginx, que reenvía `/api/v1` al backend FastAPI mediante la red privada de Railway. El backend persiste las evaluaciones en SQLite dentro de un volumen montado en `/app/data`.
+Un fallo en pytest, lint o build marca el workflow como fallido. No necesita Docker ni servidor MLflow externo.
 
-Configuración del servicio `backend`:
+## Despliegue en Railway
 
-- Dockerfile: `Dockerfile` en la raíz del repositorio.
-- `DATABASE_URL=sqlite:////app/data/stroke_app.db`.
-- Railway Volume montado en `/app/data`.
-- `PORT` es proporcionado por Railway; localmente se utiliza `8000` por defecto.
-- Healthcheck: `/api/v1/health`.
-- Una sola réplica, necesaria para utilizar SQLite de forma segura.
+CEREVIA está desplegada y operativa:
 
-Configuración del servicio `frontend`:
+- **Aplicación:** [https://frontend-production-e01f.up.railway.app/](https://frontend-production-e01f.up.railway.app/)
+- **Formulario:** [https://frontend-production-e01f.up.railway.app/assessment](https://frontend-production-e01f.up.railway.app/assessment)
 
-- Root Directory: `/frontend`; Dockerfile: `Dockerfile`.
-- `VITE_API_URL=/api/v1`.
-- `BACKEND_HOST=${{backend.RAILWAY_PRIVATE_DOMAIN}}`.
-- `BACKEND_PORT=${{backend.PORT}}`.
-- Nginx escucha en el `PORT` proporcionado por Railway y utiliza por defecto el puerto `80` fuera de Railway.
-
-En producción se han validado el healthcheck `/api/v1/health`, el flujo completo de predicción y la consulta del historial persistido. Solo el frontend tiene dominio público; MLflow no se despliega ni es necesario para la inferencia.
-
-## ✅ Testing
-
-La suite completa se ejecuta desde la raíz del proyecto con un único comando:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+```text
+Frontend público React/Nginx
+→ red privada Railway
+→ FastAPI
+→ SQLite persistente en /app/data
 ```
 
-La ejecución debe finalizar sin fallos. Los tests utilizan recursos temporales y aislados cuando corresponde, por lo que no deben escribir en la base de datos local de la aplicación.
+El frontend reenvía `/api/v1` al backend privado. Solo el frontend tiene dominio público; el backend usa una réplica y un volumen en `/app/data`. Se validaron health, predicción e historial persistido. MLflow no se despliega porque no participa en inferencia.
 
-La suite cubre las principales áreas críticas: validación de datos, preprocesamiento, Machine Learning, servicios de modelo y predicción, API, base de datos, CLI, seguridad clínica, explicabilidad e integración entre capas.
+## Deep Learning y líneas experimentales
 
-## 📁 Estado
+Estas líneas **no sustituyen al predictor desplegado**.
 
-🚧 Proyecto en desarrollo.
+### Red neuronal tabular
+
+Usa los mismos datos, splits, preprocessing y métricas que el modelo clásico:
+
+| Métrica test | Red neuronal | Logistic Regression |
+|---|---:|---:|
+| Precision | 0.138158 | 0.137809 |
+| Recall | 0.840000 | 0.780000 |
+| F1 | 0.237288 | 0.234234 |
+| ROC-AUC | 0.835333 | 0.825723 |
+| PR-AUC | 0.163629 | 0.145957 |
+| FN / FP | 8 / 262 | 11 / 244 |
+
+La red neuronal gana experimentalmente en recall, PR-AUC y falsos negativos, pero genera más falsos positivos, es más compleja, no está calibrada y no dispone de prueba de significancia. La Logistic Regression conserva estabilidad, interpretabilidad y sencillez operativa, por lo que sigue en producción. Sus dependencias están aisladas en `requirements-dl.txt`.
+
+### CNN experimental para imágenes CT
+
+La CNN CT empleó 2.501 JPEG del **Brain Stroke CT Image Dataset de Afridi Rahman** y un split por 82 grupos visibles para reducir leakage entre cortes relacionados. `group_id` es un proxy de serie o grupo, no un paciente confirmado.
+
+En test obtuvo recall 0.57647, F1 0.41090, ROC-AUC 0.47633 y PR-AUC 0.38864. La caída frente a validation evidencia generalización insuficiente en grupos no vistos. Está registrada como prototipo (`deployed=false`), no tiene endpoint público y no es apta para uso clínico.
+
+### Arquitectura multimodal
+
+FastAPI incorpora un contrato mínimo `Predictor`. El servicio tabular lo satisface sin alterar su comportamiento. La CNN CT permanece independiente: no se carga en producción, no comparte artifacts y no existe fusión ni ensemble.
+
+La incorporación futura de imagen requeriría validación externa, contrato específico, almacenamiento seguro y trazabilidad adicional. Véase `docs/multimodal_architecture.md`.
+
+## Metodología de desarrollo
+
+- Specification-Driven Development y Kanban.
+- Desarrollo incremental mediante ramas y Pull Requests.
+- Separación estricta de train, validation y test.
+- Reproducibilidad con seeds, manifests, artifacts y MLflow.
+- Tests automatizados y Clinical Safety Guardrails.
+- Evolución arquitectónica aditiva y compatible.
+
+## Estructura del repositorio
+
+```text
+├── alembic/                 # Migraciones
+├── artifacts/               # Modelos y metadata
+├── configs/                 # Configuración por entorno
+├── data/                    # Datos raw y processed
+├── docs/                    # Especificaciones y arquitectura
+├── frontend/                # React, Vite y Nginx
+├── reports/                 # Métricas, análisis y figuras
+├── src/
+│   ├── api/                 # FastAPI, schemas y servicios
+│   ├── cli/                 # Interfaz de consola
+│   ├── data/                # Auditoría, validación y splits
+│   ├── database/            # SQLAlchemy y repositorios
+│   ├── models/              # Experimentos ML y DL
+│   ├── preprocessing/       # Transformaciones
+│   └── tracking/            # Helpers MLflow
+├── tests/                   # Suite automatizada
+├── docker-compose.yml
+├── requirements.txt
+└── requirements-dl.txt
+```
+
+## Cómo ejecutar el proyecto
+
+Opción recomendada:
+
+```powershell
+docker compose up --build -d
+```
+
+Abrir [http://localhost:5173](http://localhost:5173).
+
+Desarrollo local:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn src.api.main:app --reload
+```
+
+En otra terminal:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+`.env.example` documenta `APP_ENV`, `DATABASE_URL`, `MODEL_PATH`, `MODEL_THRESHOLD`, `MLFLOW_TRACKING_URI` y `RANDOM_SEED`. El archivo `.env` local no se versiona.
+
+## Estado final
+
+✅ **Proyecto finalizado para la entrega académica.**
+
+- Pipeline y modelo clásico final completados.
+- Frontend CEREVIA, backend, persistencia e historial operativos.
+- Explicabilidad, trazabilidad y guardrails incorporados.
+- Suite automatizada, CI, Docker y despliegue público funcionales.
+- Deep Learning tabular, CNN CT y arquitectura multimodal documentados como extensiones experimentales.
+
+## Disclaimer clínico
+
+> Esta herramienta es un sistema de apoyo a la criba. No constituye un diagnóstico médico y no sustituye la valoración de un profesional sanitario. Las explicaciones describen el comportamiento del modelo y no implican causalidad médica.
