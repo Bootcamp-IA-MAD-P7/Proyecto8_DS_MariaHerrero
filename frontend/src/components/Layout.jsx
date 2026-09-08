@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom"
 
 import Navbar from "./Navbar"
+import CereviaLogo from "./CereviaLogo"
 import {
   CLINICAL_DISCLAIMER,
 } from "../constants/clinicalSafety"
@@ -15,13 +16,16 @@ function Layout() {
       </main>
 
       <footer className="app-footer">
-        <p>
-          Stroke Risk AI
-        </p>
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <CereviaLogo compact />
+            <p>Inteligencia · Prevención · Confianza</p>
+          </div>
 
-        <p>
-          {CLINICAL_DISCLAIMER}
-        </p>
+          <p className="footer-disclaimer">
+            {CLINICAL_DISCLAIMER}
+          </p>
+        </div>
       </footer>
     </div>
   )

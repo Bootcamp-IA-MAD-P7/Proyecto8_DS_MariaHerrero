@@ -192,11 +192,19 @@ function History() {
                         </span>
 
                         <h2>
-                          {
-                            safeClassificationLabel(
-                              assessment.prediction
-                            )
-                          }
+                          <span
+                            className={`classification-badge ${
+                              assessment.prediction === 1
+                                ? "classification-badge--above"
+                                : "classification-badge--below"
+                            }`}
+                          >
+                            {
+                              safeClassificationLabel(
+                                assessment.prediction
+                              )
+                            }
+                          </span>
                         </h2>
                       </div>
 

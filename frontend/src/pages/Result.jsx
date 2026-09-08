@@ -13,7 +13,7 @@ const FEATURE_LABELS = {
   age: "Edad",
   avg_glucose_level:
     "Nivel medio de glucosa",
-  bmi: "BMI",
+  bmi: "IMC",
   hypertension:
     "Hipertensión",
   heart_disease:
@@ -27,6 +27,26 @@ const FEATURE_LABELS = {
     "Tipo de trabajo",
   Residence_type:
     "Tipo de residencia",
+}
+
+
+const VALUE_LABELS = {
+  Female: "Mujer",
+  Male: "Hombre",
+  Other: "Otro",
+  Yes: "Sí",
+  No: "No",
+  Private: "Privado",
+  "Self-employed": "Autónomo/a",
+  Govt_job: "Empleo público",
+  children: "Menor",
+  Never_worked: "Nunca ha trabajado",
+  Urban: "Urbana",
+  Rural: "Rural",
+  "formerly smoked": "Exfumador/a",
+  "never smoked": "Nunca ha fumado",
+  smokes: "Fumador/a",
+  Unknown: "Desconocido",
 }
 
 
@@ -44,7 +64,7 @@ function formatValue(
       : value.toFixed(2)
   }
 
-  return value
+  return VALUE_LABELS[value] || value
 }
 
 
@@ -153,7 +173,7 @@ function Result() {
           </p>
         </div>
 
-        <div className="content-card">
+        <div className="content-card result-empty-card">
           <div className="result-placeholder">
             <span className="result-icon">
               —
@@ -218,8 +238,14 @@ function Result() {
         </p>
       </div>
 
-      <div className="content-card">
-        <div className="risk-summary">
+      <div className="content-card result-card">
+        <div
+          className={`risk-summary ${
+            result.prediction === 1
+              ? "risk-summary--above"
+              : "risk-summary--below"
+          }`}
+        >
           <span className="risk-label">
             Resultado respecto al umbral
           </span>

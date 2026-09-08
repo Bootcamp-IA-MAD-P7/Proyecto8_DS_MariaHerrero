@@ -260,12 +260,17 @@ function NewAssessment() {
           para solicitar una estimación preventiva
           de riesgo.
         </p>
+
       </div>
 
-      <div className="content-card">
-        <h2>
-          Datos del paciente
-        </h2>
+      <div className="content-card assessment-card">
+        <div className="card-heading">
+          <span className="card-heading__index">01</span>
+          <div>
+            <h2>Datos del paciente</h2>
+            <p>Completa todos los campos para solicitar la evaluación.</p>
+          </div>
+        </div>
 
         <form
           className="assessment-form"
@@ -275,6 +280,10 @@ function NewAssessment() {
           noValidate
         >
           <div className="form-grid">
+            <div className="form-section-heading">
+              <span>Datos personales</span>
+            </div>
+
             <div className="form-field">
               <label
                 htmlFor="gender"
@@ -354,6 +363,10 @@ function NewAssessment() {
                   </span>
                 )
               }
+            </div>
+
+            <div className="form-section-heading">
+              <span>Antecedentes</span>
             </div>
 
             <div className="form-field">
@@ -438,6 +451,10 @@ function NewAssessment() {
                   </span>
                 )
               }
+            </div>
+
+            <div className="form-section-heading">
+              <span>Contexto y hábitos</span>
             </div>
 
             <div className="form-field">
@@ -580,74 +597,6 @@ function NewAssessment() {
 
             <div className="form-field">
               <label
-                htmlFor="avg_glucose_level"
-              >
-                Nivel medio de glucosa
-              </label>
-
-              <input
-                id="avg_glucose_level"
-                name="avg_glucose_level"
-                type="number"
-                min="0"
-                step="0.01"
-                value={
-                  form.avg_glucose_level
-                }
-                onChange={
-                  handleChange
-                }
-                placeholder="Ej. 99"
-              />
-
-              {
-                errors.avg_glucose_level &&
-                (
-                  <span className="field-error">
-                    {
-                      errors.avg_glucose_level
-                    }
-                  </span>
-                )
-              }
-            </div>
-
-            <div className="form-field">
-              <label
-                htmlFor="bmi"
-              >
-                BMI
-              </label>
-
-              <input
-                id="bmi"
-                name="bmi"
-                type="number"
-                min="0"
-                step="0.1"
-                value={
-                  form.bmi
-                }
-                onChange={
-                  handleChange
-                }
-                placeholder="Ej. 30.1"
-              />
-
-              {
-                errors.bmi &&
-                (
-                  <span className="field-error">
-                    {
-                      errors.bmi
-                    }
-                  </span>
-                )
-              }
-            </div>
-
-            <div className="form-field">
-              <label
                 htmlFor="smoking_status"
               >
                 Estado respecto al tabaco
@@ -695,6 +644,79 @@ function NewAssessment() {
                 )
               }
             </div>
+
+            <div className="form-section-heading">
+              <span>Mediciones</span>
+            </div>
+
+            <div className="form-field">
+              <label
+                htmlFor="avg_glucose_level"
+              >
+                Nivel medio de glucosa
+              </label>
+
+              <input
+                id="avg_glucose_level"
+                name="avg_glucose_level"
+                type="number"
+                min="0"
+                step="0.01"
+                value={
+                  form.avg_glucose_level
+                }
+                onChange={
+                  handleChange
+                }
+                placeholder="Ej. 99"
+              />
+
+              {
+                errors.avg_glucose_level &&
+                (
+                  <span className="field-error">
+                    {
+                      errors.avg_glucose_level
+                    }
+                  </span>
+                )
+              }
+            </div>
+
+            <div className="form-field">
+              <label
+                htmlFor="bmi"
+              >
+                IMC
+              </label>
+
+              <input
+                id="bmi"
+                name="bmi"
+                type="number"
+                min="0"
+                step="0.1"
+                value={
+                  form.bmi
+                }
+                onChange={
+                  handleChange
+                }
+                placeholder="Ej. 30.1"
+              />
+
+              {
+                errors.bmi &&
+                (
+                  <span className="field-error">
+                    {
+                      errors.bmi
+                    }
+                  </span>
+                )
+              }
+            </div>
+
           </div>
 
           {
