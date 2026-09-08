@@ -99,7 +99,7 @@ def test_health_endpoint():
     assert data["model_version"] == "logreg_v1"
 
 
-def test_health_is_degraded_without_prediction_service(
+def test_health_is_degraded_without_active_predictor(
     monkeypatch,
 ):
     class LoadedModelService:
@@ -113,7 +113,7 @@ def test_health_is_degraded_without_prediction_service(
     )
     monkeypatch.setattr(
         api_main,
-        "prediction_service",
+        "active_predictor",
         None,
     )
 

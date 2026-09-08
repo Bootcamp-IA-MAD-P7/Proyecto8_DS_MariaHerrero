@@ -39,6 +39,9 @@ CALIBRATION_METHOD = "sigmoid"
 
 
 class PredictionService:
+    modality = "tabular"
+    model_name = "stroke-risk-screening-model"
+
     def __init__(
         self,
         model_service,
@@ -92,6 +95,14 @@ class PredictionService:
             )
 
         self.reference_values = reference_values
+
+    @property
+    def model_version(self):
+        return self.model_service.model_version
+
+    @property
+    def is_ready(self):
+        return self.model_service.is_loaded
 
     def predict(
         self,
