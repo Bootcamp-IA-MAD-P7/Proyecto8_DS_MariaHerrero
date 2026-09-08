@@ -1,0 +1,5 @@
+{
+  "model_version": "ct_cnn_v1",
+  "threshold": 0.37,
+  "selected_on": "validation"
+}

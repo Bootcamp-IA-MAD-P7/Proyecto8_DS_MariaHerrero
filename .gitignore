@@ -30,6 +30,9 @@ data/processed/*
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
+!data/processed/brain_ct_train.csv
+!data/processed/brain_ct_validation.csv
+!data/processed/brain_ct_test.csv
 
 # ML models and artifacts
 models/*
@@ -37,15 +40,23 @@ models/*
 artifacts/
 !artifacts/
 artifacts/*
+
 !artifacts/final_model/
 artifacts/final_model/*
 !artifacts/final_model/stroke_model_logreg_v1.joblib
 !artifacts/final_model/threshold_logreg_v1.json
 !artifacts/final_model/reference_values_logreg_v1.json
+
 !artifacts/tabular_neural_network/
 artifacts/tabular_neural_network/*
 !artifacts/tabular_neural_network/tabular_nn_v1.keras
 !artifacts/tabular_neural_network/preprocessor_tabular_nn_v1.joblib
+
+!artifacts/ct_cnn/
+artifacts/ct_cnn/*
+!artifacts/ct_cnn/ct_cnn_v1.keras
+!artifacts/ct_cnn/threshold_ct_cnn_v1.json
+
 mlruns/
 mlartifacts/
 mlflow.db
