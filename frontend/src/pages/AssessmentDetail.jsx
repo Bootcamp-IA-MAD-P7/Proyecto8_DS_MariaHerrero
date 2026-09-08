@@ -190,7 +190,7 @@ function AssessmentDetail() {
     ["Tipo de trabajo", assessment.work_type],
     ["Tipo de residencia", assessment.Residence_type],
     ["Nivel medio de glucosa", assessment.avg_glucose_level],
-    ["BMI", assessment.bmi],
+    ["IMC", assessment.bmi],
     ["Estado respecto al tabaco", assessment.smoking_status],
   ]
 
@@ -214,8 +214,14 @@ function AssessmentDetail() {
         </p>
       </div>
 
-      <div className="content-card">
-        <div className="risk-summary">
+      <div className="content-card detail-card">
+        <div
+          className={`risk-summary ${
+            assessment.prediction === 1
+              ? "risk-summary--above"
+              : "risk-summary--below"
+          }`}
+        >
           <span className="risk-label">
             Clasificación histórica
           </span>

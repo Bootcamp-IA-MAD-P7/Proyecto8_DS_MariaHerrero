@@ -2,26 +2,18 @@ import {
   NavLink,
 } from "react-router-dom"
 
+import CereviaLogo from "./CereviaLogo"
+
 function Navbar() {
   return (
     <header className="navbar">
-      <div className="navbar-brand">
-        <span className="brand-mark">
-          SR
-        </span>
+      <div className="navbar-inner">
+        <CereviaLogo />
 
-        <div>
-          <strong>
-            Stroke Risk AI
-          </strong>
-
-          <span>
-            Clinical Support
-          </span>
-        </div>
-      </div>
-
-      <nav className="navbar-links">
+        <nav
+          className="navbar-links"
+          aria-label="Navegación principal"
+        >
         <NavLink
           to="/assessment"
           className={({ isActive }) =>
@@ -54,7 +46,8 @@ function Navbar() {
         >
           Historial
         </NavLink>
-      </nav>
+        </nav>
+      </div>
     </header>
   )
 }
